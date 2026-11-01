@@ -1,0 +1,57 @@
+name: Publish TEST18 source
+
+on:
+  push:
+    paths:
+      - 'source18_trigger/READY'
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Reconstruct and verify TEST18 project source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(find source18_parts -maxdepth 1 -type f -name 'part_*' | wc -l)" -eq 6
+          cat source18_parts/part_* | base64 -d > /tmp/FM1-BassStation-TEST18-Project-Source.tar.xz
+          echo "662850b75dc58c69063de1ace935e27605a5a8a86166d5c6da23bcbb13280b39  /tmp/FM1-BassStation-TEST18-Project-Source.tar.xz" | sha256sum -c -
+          tar -tJf /tmp/FM1-BassStation-TEST18-Project-Source.tar.xz >/dev/null
+
+      - name: Publish archive and browsable TEST18 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf TEST18
+          mkdir -p TEST18/source
+          cp /tmp/FM1-BassStation-TEST18-Project-Source.tar.xz TEST18/
+          tar -xJf /tmp/FM1-BassStation-TEST18-Project-Source.tar.xz -C TEST18/source --strip-components=1
+          printf '%s\n' \
+            'FM1 Bass Station TEST18 project source' \
+            '' \
+            'TEST18 adds the 240x240 Bass Station multipage GUI and approved custom splash.' \
+            'The TEST17 synth engine, factory/user banks, preset browser mappings and 303 sequencer behavior are preserved.' \
+            'Local host regression and target firmware builds pass; hardware flash testing was not performed in this pass.' \
+            > TEST18/SOURCE-NOTES.txt
+          printf '%s  %s\n' \
+            '662850b75dc58c69063de1ace935e27605a5a8a86166d5c6da23bcbb13280b39' \
+            'FM1-BassStation-TEST18-Project-Source.tar.xz' \
+            > TEST18/SOURCE-SHA256SUMS.txt
+
+      - name: Commit verified TEST18 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf source18_parts source18_trigger
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Add FM1 Bass Station TEST18 GUI and splash source"
+          git push
