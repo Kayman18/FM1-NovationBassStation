@@ -20,7 +20,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(find source16_parts -maxdepth 1 -type f -name 'part_*' | wc -l)" -eq 7
+          test "$(find source16_parts -maxdepth 1 -type f -name 'part_*' | wc -l)" -eq 8
           cat source16_parts/part_* | base64 -d > /tmp/test16-overlay.tar.xz
           echo "c56c0248627469e2a731e5e6caceec555b98059ad74c9065f227750a3d2a26a2  /tmp/test16-overlay.tar.xz" | sha256sum -c -
 
