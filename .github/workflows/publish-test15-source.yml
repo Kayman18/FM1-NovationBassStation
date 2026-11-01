@@ -1,4 +1,4 @@
-name: Publish TEST15 source
+name: Publish TEST15 project source
 
 on:
   push:
@@ -16,27 +16,38 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Reconstruct and verify source archive
+      - name: Reconstruct and verify TEST15 source archive
         shell: bash
         run: |
           set -euo pipefail
           count=$(find source15_parts -maxdepth 1 -type f -name 'part_*' | wc -l)
-          test "$count" -eq 34
-          cat source15_parts/part_* | base64 -d > /tmp/FM1-BassStation-TEST15-Source.tar.xz
-          echo "5d43a2049764eab2fe13b0134b4daecd6c09286af8b7a23ac9fb55693d4d8c9b  /tmp/FM1-BassStation-TEST15-Source.tar.xz" | sha256sum -c -
-          test "$(tar -tJf /tmp/FM1-BassStation-TEST15-Source.tar.xz | wc -l)" -eq 271
+          test "$count" -eq 11
+          cat source15_parts/part_* | base64 -d > /tmp/FM1-BassStation-TEST15-Project-Source.tar.xz
+          echo "d5762b8bdc3c63acce653563da9a357bb863aeb14670ca85b17c4b6bc444a332  /tmp/FM1-BassStation-TEST15-Project-Source.tar.xz" | sha256sum -c -
+          test "$(tar -tJf /tmp/FM1-BassStation-TEST15-Project-Source.tar.xz | wc -l)" -eq 80
 
-      - name: Publish archive and browsable tree
+      - name: Publish archive and browsable source tree
         shell: bash
         run: |
           set -euo pipefail
+          rm -rf TEST15/source
           mkdir -p TEST15/source
-          cp /tmp/FM1-BassStation-TEST15-Source.tar.xz TEST15/
-          tar -xJf /tmp/FM1-BassStation-TEST15-Source.tar.xz -C TEST15/source
-          printf '%s  %s
-'             "5d43a2049764eab2fe13b0134b4daecd6c09286af8b7a23ac9fb55693d4d8c9b"             "FM1-BassStation-TEST15-Source.tar.xz"             > TEST15/SOURCE-SHA256SUMS.txt
+          cp /tmp/FM1-BassStation-TEST15-Project-Source.tar.xz TEST15/
+          tar -xJf /tmp/FM1-BassStation-TEST15-Project-Source.tar.xz -C TEST15/source
+          cat > TEST15/SOURCE-NOTES.txt <<'EOF'
+FM1 Bass Station TEST15 project source
 
-      - name: Commit verified source
+This contains all TEST15-specific project source, tests, research, assets,
+build scripts and SDK support files. Compiled outputs and duplicated toolchains
+are intentionally omitted.
+
+The generic base/ framework is byte-identical to TEST14 (147 files), so TEST15
+does not introduce any base-framework changes.
+EOF
+          printf '%s  %s
+'             "d5762b8bdc3c63acce653563da9a357bb863aeb14670ca85b17c4b6bc444a332"             "FM1-BassStation-TEST15-Project-Source.tar.xz"             > TEST15/SOURCE-SHA256SUMS.txt
+
+      - name: Commit verified TEST15 source
         shell: bash
         run: |
           set -euo pipefail
@@ -44,5 +55,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "Add verified FM1 Bass Station TEST15 source"
+          git commit -m "Add verified FM1 Bass Station TEST15 project source"
           git push
