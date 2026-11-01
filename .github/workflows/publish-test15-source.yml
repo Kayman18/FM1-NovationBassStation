@@ -20,11 +20,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          count=$(find source15_lean_parts -maxdepth 1 -type f -name 'part_*' | wc -l)
-          test "$count" -eq 12
-          cat source15_lean_parts/part_* | base64 -d > /tmp/FM1-BassStation-TEST15-Project-Source.tar.xz
-          echo "1c06a44a0b3763de8b6caa714824bdeb8ecab07aa963c71919cfdbbb33a481c1  /tmp/FM1-BassStation-TEST15-Project-Source.tar.xz" | sha256sum -c -
-          test "$(tar -tJf /tmp/FM1-BassStation-TEST15-Project-Source.tar.xz | wc -l)" -eq 31
+          count=$(find source15_safe -maxdepth 1 -type f -name 'part_*' | wc -l)
+          test "$count" -eq 27
+          cat source15_safe/part_* | base64 -d > /tmp/FM1-BassStation-TEST15-Project-Source.tar.xz
+          echo "d5762b8bdc3c63acce653563da9a357bb863aeb14670ca85b17c4b6bc444a332  /tmp/FM1-BassStation-TEST15-Project-Source.tar.xz" | sha256sum -c -
+          test "$(tar -tJf /tmp/FM1-BassStation-TEST15-Project-Source.tar.xz | wc -l)" -eq 80
 
       - name: Publish archive and browsable source tree
         shell: bash
@@ -38,22 +38,24 @@ jobs:
 FM1 Bass Station TEST15 project source
 
 Contains the TEST15 application, Bass Station engine, build-support tools,
-source tests, and current TEST15 documentation.
+source tests, current documentation, research notes and bundled project assets.
 
-The generic FM1 base/ framework and SDK support are byte-identical to TEST14,
-so they are intentionally not duplicated here. Compiled outputs and toolchains
-are also omitted.
+Compiled outputs and toolchains are omitted. The generic FM1 base framework
+used by this build is unchanged from TEST14 and is not duplicated in this
+project-source archive.
 EOF
-          printf '%s  %s
-'             "1c06a44a0b3763de8b6caa714824bdeb8ecab07aa963c71919cfdbbb33a481c1"             "FM1-BassStation-TEST15-Project-Source.tar.xz"             > TEST15/SOURCE-SHA256SUMS.txt
+          printf '%s  %s\n' \
+            "d5762b8bdc3c63acce653563da9a357bb863aeb14670ca85b17c4b6bc444a332" \
+            "FM1-BassStation-TEST15-Project-Source.tar.xz" \
+            > TEST15/SOURCE-SHA256SUMS.txt
 
       - name: Commit verified TEST15 source
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf source15_parts source15_lean_parts source15_trigger
+          rm -rf source15_parts source15_safe source15_lean_parts source15_head2 source15_tail source15_trigger
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "Add verified FM1 Bass Station TEST15 source"
+          git commit -m "Add verified FM1 Bass Station TEST15 project source"
           git push
