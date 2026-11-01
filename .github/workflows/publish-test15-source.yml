@@ -60,16 +60,16 @@ jobs:
           mkdir -p TEST15/source
           cp /tmp/FM1-BassStation-TEST15-Project-Source.tar.xz TEST15/
           tar -xJf /tmp/FM1-BassStation-TEST15-Project-Source.tar.xz -C TEST15/source --strip-components=1
-          cat > TEST15/SOURCE-NOTES.txt <<'EOF'
-FM1 Bass Station TEST15 project source
-
-Contains the TEST15 application, Bass Station engine, build-support tools,
-source tests, current documentation, research notes and bundled project assets.
-
-Compiled outputs and toolchains are omitted. The generic FM1 base framework
-used by this build is unchanged from TEST14 and is not duplicated in this
-project-source archive.
-EOF
+          printf '%s\n' \
+            'FM1 Bass Station TEST15 project source' \
+            '' \
+            'Contains the TEST15 application, Bass Station engine, build-support tools,' \
+            'source tests, current documentation, research notes and bundled project assets.' \
+            '' \
+            'Compiled outputs and toolchains are omitted. The generic FM1 base framework' \
+            'used by this build is unchanged from TEST14 and is not duplicated in this' \
+            'project-source archive.' \
+            > TEST15/SOURCE-NOTES.txt
           printf '%s  %s\n'             "d5762b8bdc3c63acce653563da9a357bb863aeb14670ca85b17c4b6bc444a332"             "FM1-BassStation-TEST15-Project-Source.tar.xz"             > TEST15/SOURCE-SHA256SUMS.txt
 
       - name: Commit verified TEST15 source
