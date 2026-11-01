@@ -1,0 +1,48 @@
+name: Publish TEST15 source
+
+on:
+  push:
+    paths:
+      - 'source15_trigger/READY'
+
+permissions:
+  contents: write
+
+jobs:
+  publish-source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Reconstruct and verify source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          count=$(find source15_parts -maxdepth 1 -type f -name 'part_*' | wc -l)
+          test "$count" -eq 34
+          cat source15_parts/part_* | base64 -d > /tmp/FM1-BassStation-TEST15-Source.tar.xz
+          echo "5d43a2049764eab2fe13b0134b4daecd6c09286af8b7a23ac9fb55693d4d8c9b  /tmp/FM1-BassStation-TEST15-Source.tar.xz" | sha256sum -c -
+          test "$(tar -tJf /tmp/FM1-BassStation-TEST15-Source.tar.xz | wc -l)" -eq 271
+
+      - name: Publish archive and browsable tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p TEST15/source
+          cp /tmp/FM1-BassStation-TEST15-Source.tar.xz TEST15/
+          tar -xJf /tmp/FM1-BassStation-TEST15-Source.tar.xz -C TEST15/source
+          printf '%s  %s
+'             "5d43a2049764eab2fe13b0134b4daecd6c09286af8b7a23ac9fb55693d4d8c9b"             "FM1-BassStation-TEST15-Source.tar.xz"             > TEST15/SOURCE-SHA256SUMS.txt
+
+      - name: Commit verified source
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf source15_parts source15_trigger
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Add verified FM1 Bass Station TEST15 source"
+          git push
