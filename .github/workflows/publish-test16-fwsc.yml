@@ -19,7 +19,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(find fwsc16_parts -maxdepth 1 -type f -name 'part_*' | wc -l)" -eq 13
+          test "$(find fwsc16_parts -maxdepth 1 -type f -name 'part_*' | wc -l)" -eq 14
           cat fwsc16_parts/part_* | base64 -d > /tmp/test16-min.tar.xz
           echo "54ec21effd8951fc268ec062e01d2796f34fde0531b414556fa6b54f1b70a495  /tmp/test16-min.tar.xz" | sha256sum -c -
           mkdir -p /tmp/test16
