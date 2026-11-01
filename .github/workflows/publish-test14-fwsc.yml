@@ -16,28 +16,30 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Reconstruct compressed FWSC payload
+      - name: Reconstruct minimal FWSC build payload
         shell: bash
         run: |
           set -euo pipefail
-          count=$(find fwsc_parts -maxdepth 1 -type f -name 'part_*' | wc -l)
-          test "$count" -eq 14
-          cat fwsc_parts/part_* | base64 -d > /tmp/test14-fwsc-only.xz
-          echo "156a006b629e9b602001fa4a446ab99b4b303fc09e29a54c168c2bec32f36f4f  /tmp/test14-fwsc-only.xz" | sha256sum -c -
+          count=$(find fwsc_min_parts -maxdepth 1 -type f -name 'part_*' | wc -l)
+          test "$count" -eq 6
+          cat fwsc_min_parts/part_* | base64 -d > /tmp/fwsc-minimal.tar.xz
+          echo "cc4d40a0ade30f4d4cf9f3eafe5437c00db3bb7c07772348eeff29b1126b5d5a  /tmp/fwsc-minimal.tar.xz" | sha256sum -c -
+          mkdir -p /tmp/fwsc-minimal
+          tar -xJf /tmp/fwsc-minimal.tar.xz -C /tmp/fwsc-minimal
 
-      - name: Decompress and verify FWSC
+      - name: Rebuild exact TEST14 FWSC
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p TEST14
-          xz -dc /tmp/test14-fwsc-only.xz > TEST14/FM1-BassStation-TEST14.fwsc
+          python3 /tmp/fwsc-minimal/base/tools/fm1pkg_make.py             /tmp/fwsc-minimal/app/build/bassstation.bin             /tmp/fwsc-minimal/app/build/loader/ota.bin             TEST14/FM1-BassStation-TEST14.fwsc             --product FM-1_17000206             --sdk /tmp/fwsc-minimal/build-deps/sdk
           echo "7a06540235f9a7f7ad1dc6d5abf7cbe59573756bc833793657e2ace42ea629c9  TEST14/FM1-BassStation-TEST14.fwsc" | sha256sum -c -
 
       - name: Commit verified FWSC
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf fwsc_parts fwsc_trigger
+          rm -rf fwsc_min_parts fwsc_parts fwsc_trigger
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
