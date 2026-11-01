@@ -20,9 +20,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          count=$(find fwsc15_parts -maxdepth 1 -type f -name 'part_*' | wc -l)
-          test "$count" -eq 6
-          cat fwsc15_parts/part_* | base64 -d > /tmp/fwsc15-minimal.tar.xz
+          count_head=$(find fwsc15_parts -maxdepth 1 -type f -name 'part_00[0-2]' | wc -l)
+          count_tail=$(find fwsc15_tail -maxdepth 1 -type f -name 'part_*' | wc -l)
+          test "$count_head" -eq 3
+          test "$count_tail" -eq 7
+          { cat fwsc15_parts/part_{000..002}; cat fwsc15_tail/part_*; } | base64 -d > /tmp/fwsc15-minimal.tar.xz
           echo "8c504f134ada528d9c577d98ce96ba89e5b7883d47b1231faea75811fb2964c4  /tmp/fwsc15-minimal.tar.xz" | sha256sum -c -
           mkdir -p /tmp/fwsc15
           tar -xJf /tmp/fwsc15-minimal.tar.xz -C /tmp/fwsc15
@@ -39,7 +41,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf fwsc15_parts fwsc15_trigger
+          rm -rf fwsc15_parts fwsc15_tail fwsc15_trigger
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
