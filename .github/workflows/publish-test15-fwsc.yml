@@ -1,0 +1,47 @@
+name: Publish TEST15 FWSC fast
+
+on:
+  push:
+    paths:
+      - 'fwsc15_trigger/READY'
+
+permissions:
+  contents: write
+
+jobs:
+  publish-fwsc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Reconstruct minimal TEST15 FWSC payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          count=$(find fwsc15_parts -maxdepth 1 -type f -name 'part_*' | wc -l)
+          test "$count" -eq 6
+          cat fwsc15_parts/part_* | base64 -d > /tmp/fwsc15-minimal.tar.xz
+          echo "8c504f134ada528d9c577d98ce96ba89e5b7883d47b1231faea75811fb2964c4  /tmp/fwsc15-minimal.tar.xz" | sha256sum -c -
+          mkdir -p /tmp/fwsc15
+          tar -xJf /tmp/fwsc15-minimal.tar.xz -C /tmp/fwsc15
+
+      - name: Rebuild and verify TEST15 FWSC
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p TEST15
+          python3 /tmp/fwsc15/base/tools/fm1pkg_make.py             /tmp/fwsc15/app/build/bassstation.bin             /tmp/fwsc15/app/build/loader/ota.bin             TEST15/FM1-BassStation-TEST15.fwsc             --product FM-1_17000207             --sdk /tmp/fwsc15/build-deps/sdk
+          echo "4f48f51a2598ffbb0da0a0a52fd8d5032716c942114813f622e520a8f8ab1b81  TEST15/FM1-BassStation-TEST15.fwsc" | sha256sum -c -
+
+      - name: Commit verified TEST15 FWSC
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf fwsc15_parts fwsc15_trigger
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Add verified FM1 Bass Station TEST15 FWSC"
+          git push
