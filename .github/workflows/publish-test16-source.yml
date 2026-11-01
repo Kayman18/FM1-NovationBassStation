@@ -1,0 +1,69 @@
+name: Publish TEST16 source
+
+on:
+  push:
+    paths:
+      - 'source16_trigger/READY'
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Reconstruct TEST16 source overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(find source16_parts -maxdepth 1 -type f -name 'part_*' | wc -l)" -eq 7
+          cat source16_parts/part_* | base64 -d > /tmp/test16-overlay.tar.xz
+          echo "c56c0248627469e2a731e5e6caceec555b98059ad74c9065f227750a3d2a26a2  /tmp/test16-overlay.tar.xz" | sha256sum -c -
+
+      - name: Build exact TEST16 project-source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/src
+          tar -xJf TEST15/FM1-BassStation-TEST15-Project-Source.tar.xz -C /tmp/src
+          mv /tmp/src/FM1-BassStation-TEST15-Project-Source /tmp/src/FM1-BassStation-TEST16-Project-Source
+          tar -xJf /tmp/test16-overlay.tar.xz -C /tmp/src/FM1-BassStation-TEST16-Project-Source
+          cd /tmp/src
+          tar --sort=name --owner=0 --group=0 --numeric-owner -cJf /tmp/FM1-BassStation-TEST16-Project-Source.tar.xz FM1-BassStation-TEST16-Project-Source
+          echo "5228afb2d1afa7b92eed167ee8ed12e1b5fb431b7d4226b18e1f2a61b4fe96b9  /tmp/FM1-BassStation-TEST16-Project-Source.tar.xz" | sha256sum -c -
+          test "$(find FM1-BassStation-TEST16-Project-Source -type f | wc -l)" -eq 63
+
+      - name: Publish browsable TEST16 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$GITHUB_WORKSPACE"
+          rm -rf TEST16/source
+          mkdir -p TEST16/source
+          cp /tmp/FM1-BassStation-TEST16-Project-Source.tar.xz TEST16/
+          tar -xJf /tmp/FM1-BassStation-TEST16-Project-Source.tar.xz -C TEST16/source --strip-components=1
+          printf '%s\n' \
+            'FM1 Bass Station TEST16 project source' \
+            '' \
+            'TEST16 adds the read-only 38-patch COMMUNITY bank and legacy compact Bass Station FPCh/FBCh import support.' \
+            'The persistent 128-slot USER bank format and TEST14 exact saved-state parameter transforms are unchanged.' \
+            > TEST16/SOURCE-NOTES.txt
+          printf '%s  %s\n' \
+            '5228afb2d1afa7b92eed167ee8ed12e1b5fb431b7d4226b18e1f2a61b4fe96b9' \
+            'FM1-BassStation-TEST16-Project-Source.tar.xz' \
+            > TEST16/SOURCE-SHA256SUMS.txt
+
+      - name: Commit verified TEST16 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf source16_parts source16_trigger
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Add verified FM1 Bass Station TEST16 project source"
+          git push
