@@ -1,0 +1,58 @@
+name: Reconstruct TEST14 artifacts
+
+on:
+  push:
+    paths:
+      - 'upload_parts/**'
+
+permissions:
+  contents: write
+
+jobs:
+  reconstruct:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check all upload parts are present
+        id: parts
+        shell: bash
+        run: |
+          set -euo pipefail
+          count=$(find upload_parts -maxdepth 1 -type f -name 'part_*' | wc -l)
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          if [ "$count" -ne 26 ]; then
+            echo "Waiting for all 26 parts; currently have $count."
+            exit 0
+          fi
+
+      - name: Reconstruct and verify bundle
+        if: steps.parts.outputs.count == '26'
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat upload_parts/part_* | base64 -d > FM1-BassStation-TEST14-GitHub-Bundle.tar.xz
+          echo "5e90435b40bfcf302f86dc6b43275f3adb5b2719e3aab4a82c072536151a29cd  FM1-BassStation-TEST14-GitHub-Bundle.tar.xz" | sha256sum -c -
+          rm -rf TEST14
+          mkdir -p TEST14
+          tar -xJf FM1-BassStation-TEST14-GitHub-Bundle.tar.xz -C TEST14
+          echo "0965e6b6d28b88f04847d16cb5d19808bc873dd4efbc81d54abbc3f82bbaf2bb  TEST14/FM1-BassStation-TEST14-M-Flasher.bin" | sha256sum -c -
+          echo "7a06540235f9a7f7ad1dc6d5abf7cbe59573756bc833793657e2ace42ea629c9  TEST14/FM1-BassStation-TEST14.fwsc" | sha256sum -c -
+          echo "325d7134dcb5188749ff01e17d485139d9a4222e424f86b0a0ab9a54dc1c9b4f  TEST14/FM1-BassStation-TEST14-Source-and-Tests.tar.gz" | sha256sum -c -
+
+      - name: Commit reconstructed TEST14 files
+        if: steps.parts.outputs.count == '26'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add TEST14 FM1-BassStation-TEST14-GitHub-Bundle.tar.xz
+          if git diff --cached --quiet; then
+            echo "Artifacts already committed."
+            exit 0
+          fi
+          git commit -m "Add FM1 Bass Station TEST14 artifacts"
+          git push
