@@ -24,31 +24,23 @@ jobs:
           cat source16_parts/part_* | base64 -d > /tmp/test16-overlay.tar.xz
           echo "c56c0248627469e2a731e5e6caceec555b98059ad74c9065f227750a3d2a26a2  /tmp/test16-overlay.tar.xz" | sha256sum -c -
 
-      - name: Build exact TEST16 project-source archive
+      - name: Build and verify exact TEST16 source tree
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p /tmp/src/FM1-BassStation-TEST16-Project-Source
           tar -xJf TEST15/FM1-BassStation-TEST15-Project-Source.tar.xz -C /tmp/src/FM1-BassStation-TEST16-Project-Source
           tar -xJf /tmp/test16-overlay.tar.xz -C /tmp/src/FM1-BassStation-TEST16-Project-Source
-          cd /tmp/src
-          test "$(find FM1-BassStation-TEST16-Project-Source -type f | wc -l)" -eq 63
-          tree_hash="$(cd FM1-BassStation-TEST16-Project-Source && find . -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | awk '{print $1}')"
+          test "$(find /tmp/src/FM1-BassStation-TEST16-Project-Source -type f | wc -l)" -eq 63
+          tree_hash="$(cd /tmp/src/FM1-BassStation-TEST16-Project-Source && find . -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | awk '{print $1}')"
           test "$tree_hash" = "e6d24906523f56e39ff97da0dce4ea82a66b66090e1a146cde8ba241d9faf453"
-          python3 - <<'PY'
-          import tarfile
-          with tarfile.open('/tmp/FM1-BassStation-TEST16-Project-Source.tar.xz', 'w:xz') as tf:
-              tf.add('FM1-BassStation-TEST16-Project-Source', arcname='FM1-BassStation-TEST16-Project-Source', recursive=True)
-          PY
 
       - name: Publish browsable TEST16 source
         shell: bash
         run: |
           set -euo pipefail
-          cd "$GITHUB_WORKSPACE"
           rm -rf TEST16/source
           mkdir -p TEST16/source
-          cp /tmp/FM1-BassStation-TEST16-Project-Source.tar.xz TEST16/
           cp -a /tmp/src/FM1-BassStation-TEST16-Project-Source/. TEST16/source/
           printf '%s\n' \
             'FM1 Bass Station TEST16 project source' \
@@ -56,7 +48,6 @@ jobs:
             'TEST16 adds the read-only 38-patch COMMUNITY bank and legacy compact Bass Station FPCh/FBCh import support.' \
             'The persistent 128-slot USER bank format and TEST14 exact saved-state parameter transforms are unchanged.' \
             > TEST16/SOURCE-NOTES.txt
-          (cd TEST16 && sha256sum FM1-BassStation-TEST16-Project-Source.tar.xz) > TEST16/SOURCE-SHA256SUMS.txt
           printf '%s  %s\n' \
             'e6d24906523f56e39ff97da0dce4ea82a66b66090e1a146cde8ba241d9faf453' \
             'canonical source-tree content hash' \
