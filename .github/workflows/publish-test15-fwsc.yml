@@ -21,12 +21,11 @@ jobs:
         run: |
           set -euo pipefail
           count_head=$(find fwsc15_parts -maxdepth 1 -type f -name 'part_00[0-1]' | wc -l)
-          count_head2=$(find fwsc15_head2 -maxdepth 1 -type f -name 'part_*' | wc -l)
+          test "$(wc -c < fwsc15_head2/part_000)" -eq 15000
           count_tail=$(find fwsc15_tail -maxdepth 1 -type f -name 'part_*' | wc -l)
           test "$count_head" -eq 2
-          test "$count_head2" -eq 3
           test "$count_tail" -eq 7
-          { cat fwsc15_parts/part_{000..001}; cat fwsc15_head2/part_*; cat fwsc15_tail/part_*; } | base64 -d > /tmp/fwsc15-minimal.tar.xz
+          { cat fwsc15_parts/part_{000..001}; cat fwsc15_head2/part_000; cat fwsc15_tail/part_*; } | base64 -d > /tmp/fwsc15-minimal.tar.xz
           echo "8c504f134ada528d9c577d98ce96ba89e5b7883d47b1231faea75811fb2964c4  /tmp/fwsc15-minimal.tar.xz" | sha256sum -c -
           mkdir -p /tmp/fwsc15
           tar -xJf /tmp/fwsc15-minimal.tar.xz -C /tmp/fwsc15
