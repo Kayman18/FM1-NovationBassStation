@@ -28,9 +28,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p /tmp/src
-          tar -xJf TEST15/FM1-BassStation-TEST15-Project-Source.tar.xz -C /tmp/src
-          mv /tmp/src/FM1-BassStation-TEST15-Project-Source /tmp/src/FM1-BassStation-TEST16-Project-Source
+          mkdir -p /tmp/src/FM1-BassStation-TEST16-Project-Source
+          tar -xJf TEST15/FM1-BassStation-TEST15-Project-Source.tar.xz -C /tmp/src/FM1-BassStation-TEST16-Project-Source
           tar -xJf /tmp/test16-overlay.tar.xz -C /tmp/src/FM1-BassStation-TEST16-Project-Source
           cd /tmp/src
           tar --sort=name --owner=0 --group=0 --numeric-owner -cJf /tmp/FM1-BassStation-TEST16-Project-Source.tar.xz FM1-BassStation-TEST16-Project-Source
