@@ -21,7 +21,6 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Verify the six original chunks that were already transferred correctly.
           test "$(git hash-object source15_parts/part_000)" = "0448a7c27f1ce67c6afb4fe8127fdf86a75e422f"
           test "$(git hash-object source15_parts/part_001)" = "45cfdd78ef61c76f3d856ff05f8223b1f117f2f4"
           test "$(git hash-object source15_parts/part_002)" = "ef36843990015984aef2605a83051e1d577c3a35"
@@ -29,18 +28,12 @@ jobs:
           test "$(git hash-object source15_parts/part_006)" = "22a3a1b0a25b4ca569b666a9d2818743230a99f0"
           test "$(git hash-object source15_parts/part_010)" = "c05056b0cdc596ed37f8947b66e2345b22782c32"
 
-          # Verify safe repaired chunks.
-          for spec in             003_0:1d05c79f291f4156bf2621588fa13e866db0fbf7             003_1:d093cb967dc8ce75d7bcc3938c8df40b0a92cc66             003_2:6f966dce24500bac184cd5a4d219261a3dff5f67             004_0:cdb31e30f4f9c68c93c9a8db66a09412e0ea3e30             004_1:fbbf86d8d3932ed02e9cff69b3a724319c20ce6d             004_2:4a2df720cea104b6ca6a62f761cb12c70b3e6dd0             007_0:95a74b7a4626ddfbfab2f993f916256ab15280ba             007_1:2561a982ad0dcd4dcd08698140cf699fcdd2ff75             007_2:01d85cf97ef7634a8203883864dec2153ed07b70             009_0:f54b4b3b34dafff159de857ce59f9c7d245f7189             009_1:c2ff1c61c564021d9ef46bf9770d4da5b8afb225             009_2:6cd87b3b8288832c6214620d332505563d294ddd
+          for spec in             003_0:1d05c79f291f4156bf2621588fa13e866db0fbf7             003_1:d093cb967dc8ce75d7bcc3938c8df40b0a92cc66             003_2:6f966dce24500bac184cd5a4d219261a3dff5f67             004_0:cdb31e30f4f9c68c93c9a8db66a09412e0ea3e30             004_1:fbbf86d8d3932ed02e9cff69b3a724319c20ce6d             004_2:4a2df720cea104b6ca6a62f761cb12c70b3e6dd0             007_0:95a74b7a4626ddfbfab2f993f916256ab15280ba             007_1:2561a982ad0dcd4dcd08698140cf699fcdd2ff75             007_2:01d85cf97ef7634a8203883864dec2153ed07b70             008_0:0425116b3889911ed43d3ccbe0bd35ba50a48f29             008_1:f782fa0431acd4ebaac0f41644ad144cf44fdd5d             008_2a:98947e8dda5109e7e0d89d3b90c8f9f1ebd9a8cc             008_2b:be86d09a3ca8e9824989ed05b6ff5bb39325e23c             009_0:f54b4b3b34dafff159de857ce59f9c7d245f7189             009_1:c2ff1c61c564021d9ef46bf9770d4da5b8afb225             009_2:6cd87b3b8288832c6214620d332505563d294ddd
           do
             p="${spec%%:*}"
             h="${spec#*:}"
             test "$(git hash-object "source15_fix/$p")" = "$h"
           done
-
-          # The old part_008 transfer is oversized. Its first 15,000 bytes may be
-          # the original correct chunk; validate that slice before using it.
-          head -c 15000 source15_parts/part_008 > /tmp/source15_008
-          test "$(git hash-object /tmp/source15_008)" = "3952691cab6597fdaabb2e29d2d536a867132766"
 
           {
             cat source15_parts/part_000
@@ -51,7 +44,7 @@ jobs:
             cat source15_parts/part_005
             cat source15_parts/part_006
             cat source15_fix/007_0 source15_fix/007_1 source15_fix/007_2
-            cat /tmp/source15_008
+            cat source15_fix/008_0 source15_fix/008_1 source15_fix/008_2a source15_fix/008_2b
             cat source15_fix/009_0 source15_fix/009_1 source15_fix/009_2
             cat source15_parts/part_010
           } | base64 -d > /tmp/FM1-BassStation-TEST15-Project-Source.tar.xz
