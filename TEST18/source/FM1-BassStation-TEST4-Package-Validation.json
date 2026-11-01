@@ -1,0 +1,44 @@
+{
+  "release": "TEST4",
+  "base_source": "TEST3",
+  "status": "passed",
+  "changes": {
+    "osc1_fixed_8ft": true,
+    "osc2_semitone_range": "-12..+12",
+    "osc2_fine_range_cents": 96,
+    "master_tune_cents": 50,
+    "independent_pwm_sources": true,
+    "single_oscillator_crossfade": true,
+    "simultaneous_filter_env_lfo_modulation": true,
+    "software_envelope_edit_max_seconds": 20,
+    "rack_single_patch_sysex_import_export": true,
+    "factory_program_names_recovered": 100,
+    "factory_program_values_recovered": false
+  },
+  "tests": {
+    "engine_asan_ubsan_float_cast": "passed",
+    "rack_sysex_codec_asan_ubsan_float_cast": "passed",
+    "host_ui_midi_smoke": "passed",
+    "clean_source_rebuild_byte_identical": true
+  },
+  "target_build": {
+    "application_used_bytes": 95320,
+    "application_capacity_bytes": 581564,
+    "main_ram_used_bytes": 18968,
+    "main_ram_capacity_bytes": 98304,
+    "pool_used_bytes": 69124,
+    "pool_capacity_bytes": 344064,
+    "software_double_routines": false
+  },
+  "host_timing": {
+    "render_percent_of_realtime": 0.4,
+    "note": "directional host measurement only; not an FM1 CPU measurement"
+  },
+  "sha256": {
+    "application": "f4a6be90eb9acc75291a4b99782257b3b50b5d339940868ca8745e1fd95e84a5",
+    "fwsc": "2793c701229d82e284a0ccb5c6d4dc695ea2c94f480783ffbc8879bbeeec581f",
+    "mflasher": "3107f2de1afe8bcc92308fe249761e56be19f1f445abdf8ce7558a4232d26a7c"
+  },
+  "hardware_tested_by_assistant": false,
+  "limitations": "The official 100 factory program names are recorded for research, but the software plug-in factory program value records are not yet claimed recovered. TEST4 intentionally retains the five diagnostic presets."
+}

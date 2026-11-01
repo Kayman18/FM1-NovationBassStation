@@ -1,21 +1,5 @@
-FM1 Bass Station TEST18 project source publication
+FM1 Bass Station TEST18 project source
 
-TEST18 adds the 240x240 Bass Station-themed multipage GUI and the approved
-Novation/Bass Station splash screen while preserving the TEST17 engine,
-factory/user banks, preset browser behavior and integrated 303 sequencer.
-
-Source reconstruction:
-  bash TEST18/source-bootstrap/reconstruct-test18.sh
-
-Verified TEST18 project-source file count:
-  77
-
-Verified TEST18 source-tree SHA256:
-  f18068d5ed54aa0e201305a56c401f8630f722e752042828e88fe8e0a3cb45e5
-
-Overlay SHA256:
-  d3c04a00b8338f5c13b97eaadce0b7833244569fa5868caec48548270b5199ee  TEST16 overlay
-  768c807a5cf01cd87414c585b92d2a80bf88fbcd1fa55dccba32c62f1b232374  TEST18 overlay
-
-Locally produced canonical TEST18 project-source archive SHA256:
-  662850b75dc58c69063de1ace935e27605a5a8a86166d5c6da23bcbb13280b39
+TEST18 adds the 240x240 Bass Station multipage GUI and approved custom splash.
+The TEST17 synth engine, factory/user banks, preset browser mappings and 303 sequencer behavior are preserved.
+Host regression and target firmware builds pass; hardware flash testing was not performed in this pass.

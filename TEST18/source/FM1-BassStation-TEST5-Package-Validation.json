@@ -1,0 +1,48 @@
+{
+  "release": "TEST5",
+  "base_source": "TEST4",
+  "status": "passed_focused_validation",
+  "hardware_tested": false,
+  "changes": {
+    "verified_factory_programs": 1,
+    "verified_factory_program_00": "Moog Bass",
+    "factory_program_names_recovered": 100,
+    "software_lfo_max_hz": 1000,
+    "rack_clock_divisions_nonfree": 16,
+    "rack_clock_raw64_restored": true,
+    "documented_plugin_cc_map_extended": true,
+    "rack_single_program_sysex": true
+  },
+  "tests": {
+    "engine_asan_ubsan_float_cast": "passed_1khz_lfo_and_clock",
+    "rack_sysex_roundtrip": "passed_including_raw64",
+    "host_ui_midi_13_pages": "passed",
+    "moog_factory_slot_assertion": "passed",
+    "cc16_lfo_gt_900hz_assertion": "passed",
+    "clean_source_rebuild": "byte_identical"
+  },
+  "target": {
+    "application_used_bytes": 95392,
+    "application_capacity_bytes": 581564,
+    "application_free_bytes": 486172,
+    "main_ram_used_bytes": 18968,
+    "main_ram_capacity_bytes": 98304,
+    "main_ram_free_bytes": 79336,
+    "pool_used_bytes": 69124,
+    "pool_capacity_bytes": 344064,
+    "pool_free_bytes": 274940,
+    "software_double_routines": false
+  },
+  "hashes": {
+    "application_sha256": "36141ed844481ac6ed9eab5e3545682a5065bc0495b54d645e12e6ee4f5e890c",
+    "fwsc_sha256": "dc4c1db735d088cb4e34647a2ee5ee6b7e2ced0b2f4d3db037a14f2601a05be6",
+    "mflasher_sha256": "4947e9ee7c4f644aff73d90f5958db3f0406dd964859061f0c573f68ada8a3a8"
+  },
+  "reproducibility": {
+    "clean_application_sha256": "36141ed844481ac6ed9eab5e3545682a5065bc0495b54d645e12e6ee4f5e890c",
+    "clean_fwsc_sha256": "dc4c1db735d088cb4e34647a2ee5ee6b7e2ced0b2f4d3db037a14f2601a05be6",
+    "clean_mflasher_sha256": "4947e9ee7c4f644aff73d90f5958db3f0406dd964859061f0c573f68ada8a3a8",
+    "byte_identical": true
+  },
+  "limitations": "Only factory program 00 has verified settings. Remaining 99 factory program names are recovered but values are not yet claimed or enabled."
+}

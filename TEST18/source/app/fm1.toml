@@ -1,0 +1,15 @@
+name = "BassStation"
+id_prefix = "FM-1_18"
+usb_manufacturer = "FM1 Synth Test"
+usb_product = "Bass Station TEST18"
+ble = false
+usb_audio_in = false
+usb_audio_out = false
+words = "words.tsv"
+frozen_gen = "../assets/generated"
+include = ["../engine"]
+o2 = ["../engine/*.c", "acid_seq.c"]
+o2_cflags = ["-DBASSSTATION_TARGET", "-fbuiltin", "-O3", "-ffast-math"]
+tagline = "Novation Bass Station clean-room FM1 port"
+licence = "FM1 port code MPL-2.0; clean-room DSP from published instrument behavior"
+credits = "Bass Station behavior referenced from Novation's published Bass Station/Rack documentation. FM1 platform: fm1-base/Felucca BSP."
