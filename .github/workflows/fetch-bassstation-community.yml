@@ -1,0 +1,25 @@
+name: Fetch Bass Station community banks
+
+on:
+  push:
+    paths:
+      - 'community_fetch_trigger/READY'
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Rekkerd Bass Station banks
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p banks
+          curl -fL --retry 3 -o banks/Old-School-Jungle.zip 'https://rekkerd.org/bin/presets/bass_station_jungle_.zip'
+          curl -fL --retry 3 -o banks/ProSounds-BassStation-Leads.zip 'https://rekkerd.org/bin/presets/ProSounds_BassStation_Leads.zip'
+          file banks/*
+          sha256sum banks/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bassstation-community-banks
+          path: banks/
+          retention-days: 1
