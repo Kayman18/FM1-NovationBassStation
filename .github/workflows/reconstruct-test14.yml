@@ -20,11 +20,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          count16=$(find staging_parts -maxdepth 1 -type f -name 'part_*' | wc -l)
-          count32=$(find staging_tail -maxdepth 1 -type f -name 'part_*' | wc -l)
-          test "$count16" -eq 8
-          test "$count32" -eq 24
-          { cat staging_parts/part_{000..007}; cat staging_tail/part_*; } | base64 -d > /tmp/test14-payload.tar.xz
+          count=$(find staging_parts -maxdepth 1 -type f -name 'part_*' | wc -l)
+          test "$count" -eq 55
+          cat staging_parts/part_* | base64 -d > /tmp/test14-payload.tar.xz
           echo "9436427c63429bc1c2b6da3b6c5fdb8171aa9787427cb1d1d1089ddb02e22ce6  /tmp/test14-payload.tar.xz" | sha256sum -c -
           mkdir -p /tmp/test14-payload
           tar -xJf /tmp/test14-payload.tar.xz -C /tmp/test14-payload
@@ -107,7 +105,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf staging_parts staging_tail upload_trigger
+          rm -rf staging_parts upload_trigger
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
