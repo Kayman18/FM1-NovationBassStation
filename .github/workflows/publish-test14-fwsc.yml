@@ -1,0 +1,45 @@
+name: Publish TEST14 FWSC fast
+
+on:
+  push:
+    paths:
+      - 'fwsc_trigger/READY'
+
+permissions:
+  contents: write
+
+jobs:
+  publish-fwsc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Reconstruct compressed FWSC payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          count=$(find fwsc_parts -maxdepth 1 -type f -name 'part_*' | wc -l)
+          test "$count" -eq 14
+          cat fwsc_parts/part_* | base64 -d > /tmp/test14-fwsc-only.xz
+          echo "156a006b629e9b602001fa4a446ab99b4b303fc09e29a54c168c2bec32f36f4f  /tmp/test14-fwsc-only.xz" | sha256sum -c -
+
+      - name: Decompress and verify FWSC
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p TEST14
+          xz -dc /tmp/test14-fwsc-only.xz > TEST14/FM1-BassStation-TEST14.fwsc
+          echo "7a06540235f9a7f7ad1dc6d5abf7cbe59573756bc833793657e2ace42ea629c9  TEST14/FM1-BassStation-TEST14.fwsc" | sha256sum -c -
+
+      - name: Commit verified FWSC
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf fwsc_parts fwsc_trigger
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Add verified FM1 Bass Station TEST14 FWSC"
+          git push
