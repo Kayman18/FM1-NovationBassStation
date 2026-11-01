@@ -3,7 +3,7 @@ name: Reconstruct TEST14 artifacts
 on:
   push:
     paths:
-      - 'upload_parts/**'
+      - 'upload_trigger/READY'
 
 permissions:
   contents: write
@@ -21,19 +21,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          count=$(find upload_parts -maxdepth 1 -type f -name 'part_*' | wc -l)
+          count=$(find staging_parts -maxdepth 1 -type f -name 'part_*' | wc -l)
           echo "count=$count" >> "$GITHUB_OUTPUT"
-          if [ "$count" -ne 26 ]; then
-            echo "Waiting for all 26 parts; currently have $count."
-            exit 0
+          if [ "$count" -ne 77 ]; then
+            echo "Expected 77 parts; found $count."
+            exit 1
           fi
 
       - name: Reconstruct and verify bundle
-        if: steps.parts.outputs.count == '26'
         shell: bash
         run: |
           set -euo pipefail
-          cat upload_parts/part_* | base64 -d > FM1-BassStation-TEST14-GitHub-Bundle.tar.xz
+          cat staging_parts/part_* | base64 -d > FM1-BassStation-TEST14-GitHub-Bundle.tar.xz
           echo "5e90435b40bfcf302f86dc6b43275f3adb5b2719e3aab4a82c072536151a29cd  FM1-BassStation-TEST14-GitHub-Bundle.tar.xz" | sha256sum -c -
           rm -rf TEST14
           mkdir -p TEST14
@@ -43,16 +42,11 @@ jobs:
           echo "325d7134dcb5188749ff01e17d485139d9a4222e424f86b0a0ab9a54dc1c9b4f  TEST14/FM1-BassStation-TEST14-Source-and-Tests.tar.gz" | sha256sum -c -
 
       - name: Commit reconstructed TEST14 files
-        if: steps.parts.outputs.count == '26'
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add TEST14 FM1-BassStation-TEST14-GitHub-Bundle.tar.xz
-          if git diff --cached --quiet; then
-            echo "Artifacts already committed."
-            exit 0
-          fi
           git commit -m "Add FM1 Bass Station TEST14 artifacts"
           git push
