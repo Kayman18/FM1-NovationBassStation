@@ -1,0 +1,8 @@
+FM1 Bass Station TEST15 project source
+
+Contains the TEST15 application, Bass Station engine, build-support tools,
+source tests, current documentation, research notes and bundled project assets.
+
+Compiled outputs and toolchains are omitted. The generic FM1 base framework
+used by this build is unchanged from TEST14 and is not duplicated in this
+project-source archive.

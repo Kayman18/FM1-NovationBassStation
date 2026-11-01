@@ -1,0 +1,46 @@
+{
+  "release": "TEST6",
+  "base_source": "TEST5",
+  "status": "passed_focused_validation",
+  "hardware_tested": false,
+  "changes": {
+    "software_envelope_max_seconds": 20,
+    "lfo_saw_direction": "rising",
+    "aftertouch_pitch_route": "lfo_vibrato_depth",
+    "breath_pitch_route": "lfo_vibrato_depth",
+    "verified_factory_program_00": "Moog Bass",
+    "moog_bass_modwheel_pitch": 5,
+    "factory_program_values_verified": 1,
+    "rack_single_program_sysex_unchanged": true,
+    "storage_layout_compatible_with_test5": true
+  },
+  "tests": {
+    "host_ui_midi_13_pages": "passed",
+    "moog_wheel_pitch_assertion": "passed",
+    "20_second_envelope_cc_assertion": "passed",
+    "cc16_lfo_gt_900hz_assertion": "passed",
+    "engine_asan_ubsan_float_cast": "passed",
+    "rising_saw_regression": "passed",
+    "pressure_pitch_no_static_offset_regression": "passed",
+    "rack_sysex_roundtrip": "passed",
+    "clean_self_contained_source_rebuild": "byte_identical"
+  },
+  "target": {
+    "application_used_bytes": 95488,
+    "application_capacity_bytes": 581564,
+    "application_free_bytes": 486076,
+    "main_ram_used_bytes": 18968,
+    "main_ram_capacity_bytes": 98304,
+    "main_ram_free_bytes": 79336,
+    "pool_used_bytes": 69124,
+    "pool_capacity_bytes": 344064,
+    "pool_free_bytes": 274940,
+    "software_double_routines": false
+  },
+  "hashes": {
+    "application_sha256": "000865a2f0a92eaec581fcde84fb0f686750584f96effcb071a4a7ba6ce7fa65",
+    "fwsc_sha256": "66a272933cc0d30bfddc02ce1eedc976cc999c8713588d8066b4ff34bc488256",
+    "mflasher_sha256": "8d19e298e153cc45984ac8f106393e8e6f1d9aa745db00c206c91ba15942fc2b"
+  },
+  "limitations": "Only factory program 00 has verified plug-in settings. Remaining factory names are inventory only until value records are recovered."
+}
