@@ -1,0 +1,44 @@
+name: Publish TEST20 source
+
+on:
+  push:
+    paths:
+      - 'TEST20/FM1-BassStation-TEST20-Project-Source.tar.xz'
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify TEST20 source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "c306a1bcb2199c0ed5865c92e1b12dc49f017431d3a8126d8d00999a09e12afa  TEST20/FM1-BassStation-TEST20-Project-Source.tar.xz" | sha256sum -c -
+          tar -tJf TEST20/FM1-BassStation-TEST20-Project-Source.tar.xz >/dev/null
+
+      - name: Publish browsable TEST20 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf TEST20/source
+          mkdir -p TEST20/source
+          tar -xJf TEST20/FM1-BassStation-TEST20-Project-Source.tar.xz -C TEST20/source --strip-components=1
+          printf '%s\n'             'FM1 Bass Station TEST20 project source'             ''             'TEST20 fixes direct mutation knobs, adds sequencer note-edge declicking,'             'and makes OCT-/OCT+ transpose the running 303 sequencer.'             'Normal updates use FWSC to preserve per-device USER-bank storage.'             > TEST20/SOURCE-NOTES.txt
+          printf '%s  %s\n'             'c306a1bcb2199c0ed5865c92e1b12dc49f017431d3a8126d8d00999a09e12afa'             'FM1-BassStation-TEST20-Project-Source.tar.xz'             > TEST20/SOURCE-SHA256SUMS.txt
+
+      - name: Commit browsable source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add TEST20/source TEST20/SOURCE-NOTES.txt TEST20/SOURCE-SHA256SUMS.txt
+          git commit -m "Publish browsable FM1 Bass Station TEST20 source"
+          git push
