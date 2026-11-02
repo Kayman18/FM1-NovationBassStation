@@ -1,0 +1,3 @@
+b991a9ab152b94ed811bb52110dd5c4e6b7df813230c73d1b683bbbce075fd25  FM1-BassStation-RC1.fwsc
+8ca818cb86787546f14d1c8b72864a4675a8554c6b0538dccd0ef6c505c35cca  FM1-BassStation-RC1-Web-Editor.zip
+dcff2c0fabea32b47a5d9d1e123c64bab62be39bc367271d2f9714412a2390b8  FM1-BassStation-RC1-Project-Source.tar.xz

@@ -1,0 +1,18 @@
+{
+  "release": "RC1",
+  "numeric_release": "1.0.0",
+  "fwsc_product_identity": "FM-1_20010000",
+  "application_bytes": 154828,
+  "application_sha256": "4e869fa42049bf00158ef6174687d8123c44b7e27a73fc18011ff113070c4ee7",
+  "fwsc_sha256": "b991a9ab152b94ed811bb52110dd5c4e6b7df813230c73d1b683bbbce075fd25",
+  "web_editor_sha256": "8ca818cb86787546f14d1c8b72864a4675a8554c6b0538dccd0ef6c505c35cca",
+  "source_archive_sha256": "dcff2c0fabea32b47a5d9d1e123c64bab62be39bc367271d2f9714412a2390b8",
+  "host_ui_regression": "pass",
+  "acid_seq_test": "pass",
+  "engine_test": "pass",
+  "factory_bank_test": "pass",
+  "rack_sysex_test": "pass",
+  "bank_tooling_test": "pass",
+  "clean_source_rebuild": "byte-identical app and FWSC",
+  "generic_mflasher_published": false
+}
