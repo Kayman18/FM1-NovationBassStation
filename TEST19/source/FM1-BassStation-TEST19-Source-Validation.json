@@ -1,0 +1,14 @@
+{
+  "build": "FM1-BassStation-TEST19",
+  "source_files": 206,
+  "source_bytes": 3425685,
+  "tree_content_sha256": "5572e2a7a11c026510ec5098a06a96b1a77221744bd1e8ea9657daae0f47c518",
+  "firmware_app_bytes": 154612,
+  "firmware_app_sha256": "c3843b87d50a1daff72da7dba2edd92e61bc65a555a8f97cdeb26b2fcce3fae6",
+  "fwsc_sha256": "3c1f628314b67323b2d3451c5869046760fe1b7679d0b0864e687ecdee161eac",
+  "mflasher_sha256": "bb962a2a6dedebc04e38c3376667e492f6f2d6548306c180fc1bfbfefecdf0b1",
+  "host_regression": "pass",
+  "acid_seq_unit": "pass",
+  "web_editor_js_syntax": "pass",
+  "hardware_flashing": false
+}

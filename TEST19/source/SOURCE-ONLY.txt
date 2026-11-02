@@ -1,0 +1,8 @@
+FM1 Bass Station TEST19 source tree.
+
+Includes the Bass Station engine, integrated 303 sequencer, 240x240 GUI/splash,
+USB-C Web MIDI editor, FM1 base framework source, tests, build support and the
+pinned M-Flasher reference image.
+
+The third-party Jieli compiler archive is intentionally not duplicated here.
+See toolchain/README.txt or set JIELI_TOOLCHAIN before running build.sh.

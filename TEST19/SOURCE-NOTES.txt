@@ -1,0 +1,5 @@
+FM1 Bass Station TEST19 project source
+
+TEST19 adds the seven-mode 303 editor and USB-C Web MIDI browser editor.
+The archive includes the FM1 base framework source and pinned M-Flasher reference.
+The third-party Jieli compiler archive is not republished; see source/toolchain/README.txt.
