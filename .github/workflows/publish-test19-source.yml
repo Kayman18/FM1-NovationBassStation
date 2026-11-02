@@ -1,0 +1,53 @@
+name: Publish TEST19 source
+
+on:
+  push:
+    paths:
+      - 'TEST19/FM1-BassStation-TEST19-Project-Source.tar.xz'
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify TEST19 project source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "001f60d376ded339807d31bad10e8510728939159209e7b55f75b1db08ba2c54  TEST19/FM1-BassStation-TEST19-Project-Source.tar.xz" | sha256sum -c -
+          tar -tJf TEST19/FM1-BassStation-TEST19-Project-Source.tar.xz >/dev/null
+
+      - name: Publish browsable TEST19 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf TEST19/source
+          mkdir -p TEST19/source
+          tar -xJf TEST19/FM1-BassStation-TEST19-Project-Source.tar.xz -C TEST19/source --strip-components=1
+          printf '%s\n' \
+            'FM1 Bass Station TEST19 project source' \
+            '' \
+            'TEST19 adds the seven-mode 303 editor and USB-C Web MIDI browser editor.' \
+            'The archive includes the FM1 base framework source and pinned M-Flasher reference.' \
+            'The third-party Jieli compiler archive is not republished; see source/toolchain/README.txt.' \
+            > TEST19/SOURCE-NOTES.txt
+          printf '%s  %s\n' \
+            '001f60d376ded339807d31bad10e8510728939159209e7b55f75b1db08ba2c54' \
+            'FM1-BassStation-TEST19-Project-Source.tar.xz' \
+            > TEST19/SOURCE-SHA256SUMS.txt
+
+      - name: Commit verified TEST19 source tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add TEST19/source TEST19/SOURCE-NOTES.txt TEST19/SOURCE-SHA256SUMS.txt
+          git commit -m "Publish browsable FM1 Bass Station TEST19 source"
+          git push
