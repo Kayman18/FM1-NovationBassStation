@@ -1,0 +1,66 @@
+{
+  "release": "TEST18",
+  "mode": "source + validated local build",
+  "firmware_built": true,
+  "hardware_flashed_or_tested": false,
+  "validation": {
+    "build_sh_shell_syntax": "pass",
+    "host_build": "pass",
+    "ui_smoke_regression": "pass",
+    "target_build": "pass",
+    "acid_seq_unit_test": "pass",
+    "bassstation_engine_unit_test": "pass",
+    "factory_bank_unit_test": "pass",
+    "rack_sysex_unit_test": "pass",
+    "bank_prepare_tests": "pass",
+    "application_bytes": 145452,
+    "application_slot_bytes": 581564,
+    "ram_data_bss_bytes": 23040,
+    "ram_limit_bytes": 98304,
+    "pool_bytes": 69124,
+    "pool_limit_bytes": 344064
+  },
+  "gui": {
+    "display": "240x240",
+    "normal_parameters_per_page": 4,
+    "theme": "Bass Station black/charcoal + cyan/white",
+    "home_overlay": [
+      "cutoff",
+      "resonance",
+      "oscillator mix",
+      "volume"
+    ],
+    "preset_browser": "redesigned",
+    "sequencer": "redesigned 303 control/step pages"
+  },
+  "splash": {
+    "display": "240x240",
+    "encoding": "16-colour RGB565 palette + packed 4bpp indices",
+    "packed_pixel_bytes": 28800,
+    "preview": "app/assets/bass_station_splash_240.png"
+  },
+  "artifacts": {
+    "fwsc_sha256": "3f78aa66b137760546032acc11e80adefa1893a98e7ede93750fce5fbada0940",
+    "mflasher_sha256": "fd53b93319202277d0ffff531348fc7afa6807266d74c57656e82c3de15b794c",
+    "application_sha256": "f7d103a634eef8da7010ff2fbcb3ab3d7cbbde0aa14ed1e9dd10bddaa75c32c8"
+  },
+  "sha256": {
+    "build.sh": "10148019ef7969b80e3a9b968cc5948379b24f1d3f6db55a95c658c9299c4f6f",
+    "app/app.c": "c8404158192ee8618c88febd7a0787311c85a778b2fdfdf4a516c977848cb5ba",
+    "app/app.h": "ea5ac3cce9c91d6b933509ad7a66a30c7af638c47ce4caee0ec054d93808b6b3",
+    "app/fm1.toml": "2af08436402e2442e6d66d44edad1aa4e0f4c4910dd0f33c4ccc9c610e804e96",
+    "app/splash_bassstation.h": "fbdf06b563c5d004717a2f486e98695f17078eb184d0b87839e77105aeca097e",
+    "app/assets/bass_station_splash_240.png": "ab5f6e7bb7992784ed0c820fd221f4ad4b5cdcc2ff8026953f8e01a5186223c7",
+    "app/acid_seq.c": "9dc6745b0958b7db0dd23dfd66127ba0d02f7111b743441029f67db1976a5247",
+    "app/acid_seq.h": "d757ba68ce7b9a0b8acf1445a8ab53e197fcfca4f1435c9a27849b3d093a8834",
+    "engine/bassstation.c": "c3d5603f9d03a154dd03892cbd44f0a7817c8b156eb1d0caff00d68f70cd4754",
+    "toolchain/jieli-linux-toolchains-20260730.1.tar.xz": "a1545cddbc451a06bac43eb5cd96d831470c42a97c5c0b1f98879a20fc7647bd",
+    "reference/FM1-PolyWavetable-TEST81-M-Flasher.bin": "ead915f71caff82d92e090da0b6912e910774fff950153fd4976f935937e6940"
+  },
+  "notes": [
+    "TEST18 preserves the TEST17 settings/user-bank format; GUI state HOME is transient.",
+    "The existing TEST17 host UI/MIDI regression script passes unchanged.",
+    "The generic host simulator received a one-line fix so APP_SPLASH applications can invoke the host splash command.",
+    "No hardware flash or physical FM1 screen test was performed."
+  ]
+}

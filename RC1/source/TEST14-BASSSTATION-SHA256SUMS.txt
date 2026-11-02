@@ -1,0 +1,4 @@
+e2fed9f319f5d2bd0cdf87c3510f4a4280c4c98f430286e10f894587cf98a1ee  app/build/bassstation.bin
+7a06540235f9a7f7ad1dc6d5abf7cbe59573756bc833793657e2ace42ea629c9  app/build/bassstation-0.2.6.fwsc
+c44bbc46ddfd426d3c97c0d2aa60f3c6871b3213f6b7bf6b1d49e229f6c7c466  app/build/bassstation.elf
+0965e6b6d28b88f04847d16cb5d19808bc873dd4efbc81d54abbc3f82bbaf2bb  release/FM1-BassStation-TEST14-M-Flasher.bin

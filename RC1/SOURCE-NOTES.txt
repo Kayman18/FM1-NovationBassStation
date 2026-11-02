@@ -1,0 +1,5 @@
+FM1 Bass Station RC1 project source
+
+SELECT is Filter Cutoff and ALGO is Filter Resonance outside the SEL preset browser.
+Normal pages use the full 2x2 four-control layout with the old lower footer removed.
+Splash hold is doubled to 800 ms and the release is marked RC1.
