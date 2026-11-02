@@ -1,0 +1,44 @@
+name: Publish TEST21 source
+
+on:
+  push:
+    paths:
+      - 'TEST21/FM1-BassStation-TEST21-Project-Source.tar.xz'
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify TEST21 source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "49dfc9a52b070cc2a621192d91d67c5f9c165c3f705b388434592c55bbc23c7e  TEST21/FM1-BassStation-TEST21-Project-Source.tar.xz" | sha256sum -c -
+          tar -tJf TEST21/FM1-BassStation-TEST21-Project-Source.tar.xz >/dev/null
+
+      - name: Publish browsable TEST21 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf TEST21/source
+          mkdir -p TEST21/source
+          tar -xJf TEST21/FM1-BassStation-TEST21-Project-Source.tar.xz -C TEST21/source --strip-components=1
+          printf '%s\n'             'FM1 Bass Station TEST21 project source'             ''             'TEST21 restores generative mutation settings and safely seeds empty USER slots.'             'USER 1-38 are recovered community patches; USER 39-128 are recovered factory copies.'             'Existing valid USER patches are never overwritten by the bootstrap.'             > TEST21/SOURCE-NOTES.txt
+          printf '%s  %s\n'             '49dfc9a52b070cc2a621192d91d67c5f9c165c3f705b388434592c55bbc23c7e'             'FM1-BassStation-TEST21-Project-Source.tar.xz'             > TEST21/SOURCE-SHA256SUMS.txt
+
+      - name: Commit browsable source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add TEST21/source TEST21/SOURCE-NOTES.txt TEST21/SOURCE-SHA256SUMS.txt
+          git commit -m "Publish browsable FM1 Bass Station TEST21 source"
+          git push
