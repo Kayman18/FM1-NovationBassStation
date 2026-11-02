@@ -1,0 +1,105 @@
+Bass Station 2.x factory program names.
+TEST8 recovered the matching 100 compact factory program records from the classic
+plug-in `tffp` state bank; see research/MOOG-BASS-FACTORY00.md and
+research/BassStationStereo-Factory.pchk. The entries below are no longer names-only.
+
+00 Moog Bass
+01 Wow 1 Bass
+02 Jacko Bass
+03 Soft Bass
+04 Electric Bass
+05 Birdland Bass
+06 Percussive Bass
+07 Eow Bass
+08 Power Bass
+09 Freakpower Bass
+10 TB303 Autoglide Bass
+11 Spit Sine Bass
+12 TB303 Eow Bass
+13 TB303 Square Bass
+14 Thud Bass
+15 Ambient Bass
+16 Trance 1
+17 Trance 2
+18 Spit
+19 Rainman
+20 Yazoo Lead
+21 Organ Bass
+22 Clavy Lead
+23 Puck Lead
+24 Lfo Filter Fade Bass
+25 Square Bass
+26 Wow 2 Bass
+27 Woweo Bass
+28 hard Sync Lead
+29 Square Porta Lead
+30 Sync 0 Lead
+31 Sync 1 Lead
+32 PT Power Lead
+33 Love Don't Lead
+34 Duck Lead
+35 Clav Lead
+36 Whistle Lead
+37 Yaz 2 Lead
+38 Sync 3 Lead
+39 Resonant Lead
+40 Early Bass
+41 Fuzz Bass
+42 Ripe Bass
+43 Aftertouch Lead
+44 92 Lead
+45 Tinky Lead
+46 Subtle Bass
+47 Click Lead
+48 Blitz Kid Lead
+49 70s Funk Bass
+50 Single Osc Lead
+51 Sync Up Lead
+52 DnB Bass
+53 Porta Bass
+54 Sync Down Lead
+55 Q Lead
+56 Biaow Bass
+57 Interval Lead
+58 Do Stay Lead
+59 Organic Lead
+60 Velo Bend Bass
+61 Brassic Lead
+62 Log Bass
+63 Popsicle Bass
+64 Ripping Lead
+65 Gulp Bass
+66 70s Funk Lead
+67 Porta Lead1
+68 Techno Bass
+69 Detuned Bass
+70 Click Sync Lead
+71 Squarobilly Lead
+72 LFO Swept Bass
+73 Square Bass
+74 Release Lead
+75 Thin Pulse Bass
+76 Knuckles Lead
+77 Noughty Lead
+78 Sub Bass
+79 Takebreath Bass
+80 Stairway Bass
+81 Dr Who is it?
+82 Cheapkey Bass
+83 Get Serious Bass
+84 Epic Bass Bass
+85 WowTalk Bass
+86 Springit Bass
+87 Sussit Bass
+88 Dirtysink Lead
+89 Retro Bass
+90 Weeow LeadBass
+91 Broken Race Car
+92 Spinning Drunk
+93 Simple Pulse
+94 Inside Robot
+95 Porta Lead2
+96 Sweet Lead
+97 Bounce Bass
+98 Bootit Bass
+99 Use it up Bass

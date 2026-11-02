@@ -1,0 +1,33 @@
+{
+  "release": "TEST16",
+  "status": "source_only_not_built",
+  "base_source": "TEST15 application/engine + unchanged complete generic build support from TEST10",
+  "changes": {
+    "native_clock_internal_index_translation": true,
+    "pulse_width_manual_audit_confirmed_TEST15_behavior_no_code_change": true,
+    "compact_raw64_serialization_discrepancy_documented": true,
+    "preset_browser_unchanged_from_TEST15": true,
+    "factory_programs": 100
+  },
+  "source_package": {
+    "build_sh_present": true,
+    "base_present": true,
+    "compressed_toolchain_present": true,
+    "reference_mflasher_present": true,
+    "build_deps_present": true,
+    "build_sh_not_executed": true,
+    "firmware_not_built": true
+  },
+  "static_validation": {
+    "build_sh_bash_syntax": "passed",
+    "generic_base_byte_identical_to_TEST10_complete_kit": "passed",
+    "toolchain_byte_identical_to_TEST10_complete_kit": "passed",
+    "reference_byte_identical_to_TEST10_complete_kit": "passed",
+    "TEST15_pulse_width_DSP_restored_after_software_manual_check": "passed",
+    "clock_translation_source_level_checks": "passed"
+  },
+  "hashes": {
+    "toolchain_sha256": "a1545cddbc451a06bac43eb5cd96d831470c42a97c5c0b1f98879a20fc7647bd",
+    "reference_sha256": "ead915f71caff82d92e090da0b6912e910774fff950153fd4976f935937e6940"
+  }
+}
