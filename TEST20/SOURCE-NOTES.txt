@@ -1,0 +1,5 @@
+FM1 Bass Station TEST20 project source
+
+TEST20 fixes direct mutation knobs, adds sequencer note-edge declicking,
+and makes OCT-/OCT+ transpose the running 303 sequencer.
+Normal updates use FWSC to preserve per-device USER-bank storage.

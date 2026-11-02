@@ -1,0 +1,58 @@
+{
+  "release": "TEST7",
+  "base_source": "TEST6",
+  "status": "passed_focused_validation",
+  "hardware_tested": false,
+  "changes": {
+    "persistent_user_slots": 100,
+    "separate_builtin_and_user_banks": true,
+    "native_user_patch_storage": true,
+    "persistent_user_names": true,
+    "rack_sysex_sequential_capture": true,
+    "cc0_bank_select": true,
+    "program_change_per_bank": true,
+    "test6_settings_migration": true,
+    "bank_prepare_utility": true,
+    "third_party_patch_content_bundled": false
+  },
+  "tests": {
+    "engine_asan_ubsan_float_cast": "passed",
+    "rack_sysex_asan_ubsan_float_cast": "passed",
+    "host_ui_midi_13_pages": "passed",
+    "user_slot_save_load": "passed",
+    "user_slot_reboot_persistence": "passed",
+    "rack_sequential_capture": "passed",
+    "cc0_and_program_change_banks": "passed",
+    "bank_prepare_utility": "passed",
+    "clean_source_rebuild": "byte_identical"
+  },
+  "target": {
+    "application_used_bytes": 97564,
+    "application_capacity_bytes": 581564,
+    "application_free_bytes": 484000,
+    "main_ram_used_bytes": 22648,
+    "main_ram_capacity_bytes": 98304,
+    "main_ram_free_bytes": 75656,
+    "pool_used_bytes": 69124,
+    "pool_capacity_bytes": 344064,
+    "pool_free_bytes": 274940,
+    "software_double_routines": false
+  },
+  "hashes": {
+    "application_sha256": "2ddc860092ee1d440e11ebe17641fe04b5e03dbe7ae31f4c7bc71dbc682046e8",
+    "fwsc_sha256": "99c91162c0e6bdcfabc4c1094c6ceba36382acaeae32a9fe9c5f5050c4389981",
+    "mflasher_sha256": "34c3985c5ac9336c5c0de67b5e96e8ed7c26daf591be4295f2e733d58e2a1249"
+  },
+  "reproducibility": {
+    "clean_application_sha256": "2ddc860092ee1d440e11ebe17641fe04b5e03dbe7ae31f4c7bc71dbc682046e8",
+    "clean_fwsc_sha256": "99c91162c0e6bdcfabc4c1094c6ceba36382acaeae32a9fe9c5f5050c4389981",
+    "clean_mflasher_sha256": "34c3985c5ac9336c5c0de67b5e96e8ed7c26daf591be4295f2e733d58e2a1249",
+    "byte_identical": true
+  },
+  "limitations": [
+    "Only Moog Bass currently has fully verified original software factory settings.",
+    "No third-party online community patch archive is redistributed in TEST7.",
+    "The bank preparation utility imports verified Rack single-program frames; arbitrary VST2 FXB/FXP chunks are not guessed or decoded yet.",
+    "Hardware validation must still be performed on the user's FM1."
+  ]
+}
