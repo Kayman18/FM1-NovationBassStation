@@ -1,4 +1,0 @@
-TEST18 full source kit. The source tree includes build.sh and all bundled
-build dependencies used for the validated TEST18 build. Generated app/build,
-release and extracted build-toolchain directories are not required in the
-published source archive and may be regenerated locally with `bash build.sh`.

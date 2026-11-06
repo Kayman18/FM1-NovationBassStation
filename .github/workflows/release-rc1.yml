@@ -1,0 +1,23 @@
+name: Publish RC1
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/release-rc1.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish RC1 as latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create RC1 --title "FM1 Bass Station RC1" --notes-file FM1-BassStation-RC1-Release-Notes.md --target "$GITHUB_SHA" --latest
+          gh release upload RC1 FM1-BassStation-RC1.fwsc FM1-BassStation-RC1-Web-Editor.zip FM1-BassStation-RC1-Project-Source.tar.xz SHA256SUMS.txt SOURCE-SHA256SUMS.txt FM1-BassStation-RC1-Source-Validation.json
+      - name: Remove obsolete scratch branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method DELETE repos/$GITHUB_REPOSITORY/git/refs/heads/dronexxl-fm1-scratch

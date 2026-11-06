@@ -1,5 +1,0 @@
-FM1 Bass Station TEST21 project source
-
-TEST21 restores generative mutation settings and safely seeds empty USER slots.
-USER 1-38 are recovered community patches; USER 39-128 are recovered factory copies.
-Existing valid USER patches are never overwritten by the bootstrap.

@@ -1,5 +1,0 @@
-FM1 Bass Station TEST18 project source
-
-TEST18 adds the 240x240 Bass Station multipage GUI and approved custom splash.
-The TEST17 synth engine, factory/user banks, preset browser mappings and 303 sequencer behavior are preserved.
-Host regression and target firmware builds pass; hardware flash testing was not performed in this pass.
