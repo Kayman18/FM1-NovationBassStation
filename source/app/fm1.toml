@@ -1,7 +1,7 @@
 name = "BassStation"
 id_prefix = "FM-1_20"
 usb_manufacturer = "FM1 Synth Test"
-usb_product = "Bass Station RC3"
+usb_product = "Bass Station 1.0"
 ble = false
 usb_audio_in = false
 usb_audio_out = false

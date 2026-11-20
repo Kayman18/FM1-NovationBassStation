@@ -1,6 +1,6 @@
-# FM1 Bass Station RC3
+# FM1 Bass Station 1.0
 
-RC3 is firmware version 1.0.2. See [RC3 release notes](FM1-BassStation-RC3-Release-Notes.md) for the cutoff defaults and filter overlay.
+See the [1.0 release notes](FM1-BassStation-1.0-Release-Notes.md) for the knob layout and MIDI CC mappings. The updater version is 1.0.3.
 
 It retains the TEST20 note-edge declick, live sequencer octave transpose,
 240x240 multipage GUI, full seven-view 303 editor, preset browser, recovered
@@ -37,7 +37,7 @@ clears from being refilled automatically on later boots.
 
 ## Safe update path
 
-Use `release/FM1-BassStation-RC3.fwsc` for normal updates. It updates the
+Use `release/FM1-BassStation-1.0.fwsc` for normal updates. It updates the
 application region and preserves the per-device USER-bank storage sectors.
 
 A generic full 1 MiB M-Flasher is not built unless

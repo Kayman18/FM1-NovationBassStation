@@ -1,0 +1,21 @@
+{
+  "release": "1.0",
+  "updater_version": "1.0.3",
+  "fwsc_product_identity": "FM-1_20010003",
+  "application_bytes": 172812,
+  "application_sha256": "769a0e284e276361114fb7d7fea5cd3af32543064e8f13fd0b5191659dd33c22",
+  "fwsc_sha256": "460c96abf0c7d8cb0132a4744a39999902ea0c6c412c47317ccb25c28bc045b0",
+  "mflasher_clean_install_sha256": "955ee6bbb75842288b7aba18875ffd785cba1d5a899c6ee907525159340e5977",
+  "web_editor_sha256": "7e3459c7ac8a48dab4dd6a3107f93de7e8019e7a4cd9df7ec2b88fac30fc3fd5",
+  "source_archive_sha256": "daeda61bdcd01d9ca40d1a067a733325dbc66a8b55a41a61f243883f35cfc76a",
+  "host_ui_regression": "pass",
+  "preset_recall_midpoint_checks": 229,
+  "filter_cc_checks": "CC74 and CC71 on USB and TRS, legacy CC105 and CC106",
+  "acid_seq_test": "pass",
+  "engine_test": "pass",
+  "factory_bank_test": "pass",
+  "rack_sysex_test": "pass",
+  "bank_tooling_test": "pass",
+  "clean_source_rebuild": "byte-identical application, FWSC and clean-install M-Flasher",
+  "hardware_tested": false
+}

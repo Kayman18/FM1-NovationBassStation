@@ -1,4 +1,4 @@
-FM1 Bass Station RC3 USB-C Web Editor
+FM1 Bass Station 1.0 USB-C Web Editor
 ========================================
 
 This is a static local webpage. It does not require firmware networking and it
@@ -15,7 +15,7 @@ Windows:
 Then click CONNECT USB-C. Chrome or Edge are recommended because the page needs
 Web MIDI with SysEx permission.
 
-The editor controls all 48 Bass Station parameters exposed by the RC3 engine,
+The editor controls all 48 Bass Station parameters exposed by the 1.0 engine,
 Factory/User preset loading, JSON state save/load, and the complete 64-step 303
 sequencer editor including Generate, variable-strength mutation, piano roll,
 Gate, Up/Down octave, Accent and Slide editing.

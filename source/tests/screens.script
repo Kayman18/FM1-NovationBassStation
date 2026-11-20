@@ -1,7 +1,14 @@
 # Screen captures for the repository README.
+splash
+shot splash.png
+wait 100
 tap HOME
 turn PRESET 1 20
 shot home.png
+tap EDIT
+shot oscillator.png
+tap ENV
+shot envelope.png
 tap LFO
 turn SELECT 8 20
 turn ALGO 4 20

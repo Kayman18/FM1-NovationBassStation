@@ -1,4 +1,0 @@
-f49043919f0f4b62cca034b192b31a34e61e4d0d52fc99026d297b5ede3e0937  FM1-BassStation-RC3.fwsc
-68873717807fdd94fc9fc99184f511eca29d8cbca34eecc2776a344d61f360bb  FM1-BassStation-RC3-Web-Editor.zip
-5854d4969f4840519346f2eaad4b498f32887636ac52e56d26d809740c7ae0b2  FM1-BassStation-RC3-Project-Source.tar.xz
-18a4da47a13da2b539d0cbeb7cd1dbc3de0dc0c7427f2f44ec3ac91177abb612  recovery/FM1-BassStation-RC3-CLEAN-INSTALL-M-Flasher.bin

@@ -412,3 +412,29 @@ expect peak_db_min -70
 midi USB b0 40 00
 midi USB b0 7b 00
 wait 100
+
+# External sequencers can use standard filter CCs on USB or TRS MIDI.
+midi USB b0 4a 00
+wait 20
+expect cutoff 5
+midi USB b0 4a 7f
+wait 20
+expect cutoff 10000
+midi TRS b0 47 40
+wait 20
+expect resonance 50
+midi TRS b0 47 7f
+wait 20
+expect resonance 100
+midi USB b0 69 00
+wait 20
+expect cutoff 10
+midi TRS b0 6a 00
+wait 20
+expect resonance 0
+midi TRS b0 4a 40
+wait 20
+expect cutoff_scaled 504
+midi USB b0 47 20
+wait 20
+expect resonance 25

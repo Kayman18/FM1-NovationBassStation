@@ -4,6 +4,7 @@
 #include "acid_seq.h"
 #include "factory_bank.h"
 #include "community_bank.h"
+#include "knob_face.h"
 #include "splash_bassstation.h"
 #ifndef PLAT_HOST
 #include "perf.h"
@@ -325,7 +326,9 @@ static void cc_edit(uint32_t cc,uint32_t v){
         case 27:p->osc2_pw=plug_pw((int)v-64);break;
         case 28:p->osc_mix=(float)v/127.0f;break;
         case 35:p->filter_lfo_mod=cc_signed(v,8.0f);break;
+        case 74:p->cutoff_hz=plug_exp((int)v,CUTOFF_MIN_HZ,CUTOFF_MAX_HZ);break;
         case 105:p->cutoff_hz=cc_cutoff(v);break;
+        case 71:
         case 106:p->resonance=(float)v/127.0f;break;
         case 107:p->filter_env_mod=cc_signed(v,8.0f);break;
         case 108:p->amp_attack=cc_attack(v);break;
@@ -402,7 +405,7 @@ static int bw_param_set(unsigned id,unsigned v){bassstation_params_t *p=&set.p;s
  case 34:p->lfo_rate_hz=bw_unlog0(v,0.0055f,1000);break;case 35:p->lfo_delay_s=bw_unlog0(v,0.005f,5);break;case 36:p->glide_s=bw_unlog0(v,0.005f,5);break;case 37:p->master_tune=bw_unlin(v,-0.5f,0.5f);break;case 38:p->bend_range=bw_unlin(v,0,12);break;case 39:p->wheel_pitch=bw_unlin(v,0,15);break;case 40:p->wheel_filter=bw_unlin(v,0,6);break;
  case 41:p->aftertouch_pitch=bw_unlin(v,-7,7);break;case 42:p->aftertouch_filter=bw_unlin(v,-7,7);break;case 43:p->aftertouch_bias=bw_unlin(v,0,15);break;case 44:p->breath_pitch=bw_unlin(v,-7,7);break;case 45:p->breath_filter=bw_unlin(v,-7,7);break;case 46:p->breath_bias=bw_unlin(v,0,15);break;case 47:p->volume=bw_unlin(v,0,1.25f);break;default:return 0;}
  synth.p=*p;set.custom=1;dirty=1;ui.redraw=1;return 1;}
-static void bw_send_hello(void){unsigned n=bw_begin(BW_R_HELLO);bw_tx[n++]=102;n+=bw_put_u14(bw_tx+n,BW_PARAM_COUNT);n+=bw_put_u14(bw_tx+n,BUILTIN_SLOTS);n+=bw_put_u14(bw_tx+n,USER_SLOTS);bw_tx[n++]=0x1f;bw_finish(n);}
+static void bw_send_hello(void){unsigned n=bw_begin(BW_R_HELLO);bw_tx[n++]=103;n+=bw_put_u14(bw_tx+n,BW_PARAM_COUNT);n+=bw_put_u14(bw_tx+n,BUILTIN_SLOTS);n+=bw_put_u14(bw_tx+n,USER_SLOTS);bw_tx[n++]=0x1f;bw_finish(n);}
 static void bw_send_synth(void){unsigned id,n;if(!bw_connected)return;n=bw_begin(BW_R_SYNTH);bw_tx[n++]=set.bank;n+=bw_put_u14(bw_tx+n,set.preset);bw_tx[n++]=set.custom?1u:0u;bw_tx[n++]=(uint8_t)(set.octave+2);for(id=0;id<BW_PARAM_COUNT;id++)n+=bw_put_u14(bw_tx+n,bw_param_get(id));bw_finish(n);}
 static void bw_send_seq(void){unsigned n,i;if(!bw_connected)return;n=bw_begin(BW_R_SEQ);n+=bw_put_u14(bw_tx+n,set.seq.bpm);bw_tx[n++]=set.seq.steps;bw_tx[n++]=set.seq.note_density;bw_tx[n++]=set.seq.range;bw_tx[n++]=set.seq.root;bw_tx[n++]=set.seq.scale;bw_tx[n++]=set.seq.gate;bw_tx[n++]=set.seq.accent_density;bw_tx[n++]=set.seq.slide_density;bw_tx[n++]=set.seq.base_octave;bw_tx[n++]=set.seq.slide_time;bw_tx[n++]=set.seq.clock_mode;bw_tx[n++]=set.seq.block;bw_tx[n++]=set.seq.mut_time_ops;bw_tx[n++]=set.seq.mut_note_ops;bw_tx[n++]=set.seq.mut_art_ops;bw_tx[n++]=seqrt.running;bw_tx[n++]=seqrt.pos;for(i=0;i<ACID_SEQ_NSTEP;i++){uint8_t c=set.seq.step[i].code;bw_tx[n++]=(uint8_t)((c&0x7fu));bw_tx[n++]=(uint8_t)(((uint8_t)(set.seq.step[i].octave+2)&7u)|((c&0x80u)?8u:0u));}bw_finish(n);}
 static int bw_seq_ctrl_set(unsigned id,unsigned v){uint8_t old=set.seq.clock_mode;switch(id){case 0:set.seq.bpm=(uint16_t)stepi((int)v,0,30,300);break;case 1:set.seq.steps=(uint8_t)stepi((int)v,0,1,64);break;case 2:set.seq.note_density=(uint8_t)stepi((int)v,0,5,100);break;case 3:set.seq.range=(uint8_t)stepi((int)v,0,0,100);break;case 4:set.seq.root=(uint8_t)(v%12u);break;case 5:set.seq.scale=(uint8_t)(v%8u);break;case 6:set.seq.gate=(uint8_t)stepi((int)v,0,5,100);break;case 7:set.seq.accent_density=(uint8_t)stepi((int)v,0,0,100);break;case 8:set.seq.slide_density=(uint8_t)stepi((int)v,0,0,100);break;case 9:set.seq.base_octave=(uint8_t)stepi((int)v,0,1,5);break;case 10:set.seq.slide_time=(uint8_t)stepi((int)v,0,5,100);break;case 11:set.seq.clock_mode=(uint8_t)(v?1:0);break;case 12:set.seq.block=(uint8_t)(v?1:0);break;case 13:set.seq.mut_time_ops=(uint8_t)stepi((int)v,0,1,8);break;case 14:set.seq.mut_note_ops=(uint8_t)stepi((int)v,0,1,8);break;case 15:set.seq.mut_art_ops=(uint8_t)stepi((int)v,0,1,8);break;default:return 0;}if(old!=set.seq.clock_mode)seq_set_running(0);seq_mark_changed();return 1;}
@@ -638,11 +641,7 @@ static void input(void){
 void app_input_only(void){input();}
 
 static void cutoff_text(char *b){
-    char hz[12];
-    int_text((int32_t)((bw_param_get(19)+5u)/10u),b);
-    text_cat(b,"%  ");
-    int_text((int32_t)(set.p.cutoff_hz+0.5f),hz);
-    text_cat(b,hz);
+    int_text((int32_t)(set.p.cutoff_hz+0.5f),b);
     text_cat(b," Hz");
 }
 
@@ -715,25 +714,58 @@ static void ui_header(const char *title,const char *sub){
         if(set.custom)cv_text(233-text_w(&FONT_XS,"EDIT"),33,&FONT_XS,"EDIT",cyan);
     }
 }
-static void ui_card(int x,int y,const char *label,const char *value,int k,int active){
-    char kn[4];uint16_t cyan=ui_cyan(),line=ui_line(),dim=ui_dim(),white=ui_white();
-    cv_rect(x,y,112,39,active?cyan:line);
-    cv_rect(x+1,y+1,110,37,ui_panel());
-    if(active)cv_rect(x+1,y+1,3,37,cyan);
-    cv_text(x+7,y+4,&FONT_XS,label,dim);
-    kn[0]='K';kn[1]=(char)('1'+k);kn[2]=0;
-    cv_text(x+91,y+4,&FONT_XS,kn,cyan);
-    ui_fit_text(x+7,y+19,96,value,white);
+static void draw_knob(int cx,int cy,int size,int position){
+    static const uint16_t shade[16]={
+        0,RGB(5,8,10),RGB(11,15,18),RGB(18,22,25),
+        RGB(25,29,31),RGB(31,36,39),RGB(40,44,47),RGB(49,54,58),
+        RGB(58,63,67),RGB(68,73,77),RGB(79,84,88),RGB(91,96,100),
+        RGB(102,108,111),RGB(116,121,124),RGB(132,138,141),RGB(148,154,157)
+    };
+    int x,y;
+    float angle;
+    if(position<0)return;
+    for(x=0;x<=10;x++){
+        angle=(-135.0f+27.0f*(float)x)*0.0174532925f;
+        cv_rect(cx+(int)(fm_sinf(angle)*(float)(size/2+2)),
+                cy+(int)(-fm_cosf(angle)*(float)(size/2)),2,2,
+                x*100<=position?ui_cyan():ui_line());
+    }
+    for(y=0;y<size;y++){
+        const char *row=knob_face+(y*KNOB_FACE_SIZE/size)*KNOB_FACE_SIZE;
+        for(x=0;x<size;x++){
+            char ch=row[x*KNOB_FACE_SIZE/size];
+            if(ch!='0')cv_pset(cx-size/2+x,cy-size*18/42+y,shade[ch<='9'?ch-'0':ch-'a'+10]);
+        }
+    }
+    angle=(-135.0f+0.27f*(float)position)*0.0174532925f;
+    {
+        float rx=fm_sinf(angle),ry=-fm_cosf(angle);
+        int xa=cx+(int)(rx*(float)size*0.20f),ya=cy+(int)(ry*(float)size*0.17f);
+        int xb=cx+(int)(rx*(float)size*0.36f),yb=cy+(int)(ry*(float)size*0.31f);
+        cv_line(xa,ya,xb,yb,ui_white());
+        if(rx*rx>ry*ry)cv_line(xa,ya+1,xb,yb+1,ui_white());
+        else cv_line(xa+1,ya,xb+1,yb,ui_white());
+    }
 }
-static void ui_card_large(int x,int y,const char *label,const char *value,int k,int active){
-    char kn[4];uint16_t cyan=ui_cyan(),line=ui_line(),dim=ui_dim(),white=ui_white();
-    cv_rect(x,y,112,76,active?cyan:line);
-    cv_rect(x+1,y+1,110,74,ui_panel());
-    if(active)cv_rect(x+1,y+1,4,74,cyan);
-    cv_text(x+8,y+8,&FONT_XS,label,dim);
-    kn[0]='K';kn[1]=(char)('1'+k);kn[2]=0;
-    cv_text(x+91,y+8,&FONT_XS,kn,cyan);
-    ui_fit_text(x+8,y+35,96,value,white);
+
+static void ui_card(int x,int y,const char *label,const char *value,int k,int position,int compact){
+    char kn[3]={'K',(char)('1'+k),0};
+    const felucca_font_t *font=&FONT_B;
+    int h=compact?39:78;
+    cv_rect(x,y,112,h,ui_line());
+    cv_rect(x+1,y+1,110,h-2,ui_panel());
+    cv_rect(x+1,y+1,110,compact?1:18,ui_panel2());
+    if(position>=0)cv_text(x+(compact?95:91),y+3,&FONT_XS,kn,ui_cyan());
+    if(compact){
+        cv_text(x+39,y+5,&FONT_T,label,ui_dim());
+        ui_fit_text(x+42,y+19,64,value,ui_white());
+        draw_knob(x+20,y+17,28,position);
+    }else{
+        cv_text(x+7,y+3,&FONT_XS,label,ui_dim());
+        if(position>=0)draw_knob(x+56,y+40,38,position);
+        if(text_w(font,value)>100)font=&FONT_XS;
+        cv_text(x+(112-text_w(font,value))/2,y+(position>=0?61:36),font,value,ui_white());
+    }
 }
 static void current_preset_slot(char *b){
     char n[12];b[0]=0;
@@ -761,8 +793,49 @@ static void home_value_text(int k,char *b){
     else if(k==2)pct_text(p->osc_mix,b);
     else pct_text(p->volume,b);
 }
+static int panel_position(int page,int k){
+    static const int8_t ids[][4]={
+        {0,10,4,14}, {2,1,11,12}, {16,17,15,13}, {18,3,47,-1},
+        {19,20,21,22}, {24,25,26,27}, {29,30,31,32}, {8,36,28,33},
+        {34,7,35,9}, {37,38,39,40}, {41,42,43,-1}, {44,45,46,-1}
+    };
+    int id;
+    if(page==PG_PERF)return -1; /* Read-only statistics. */
+    id=ids[page][k];
+    if(id<0)return -1;
+    if(page==PG_OSC1&&k==3)return (int)bw_lin(set.p.osc1_lfo_pitch,-12,12);
+    if(page>=PG_AFTERTOUCH&&k<2){
+        unsigned scaled=bw_param_get((unsigned)id);
+        return scaled>500?(int)(scaled-500u)*2:0;
+    }
+    if(id==0||id==1||id==3)return (int)bw_param_get((unsigned)id)*1000;
+    if(id==4||id==7||id==8)return (int)bw_param_get((unsigned)id)*500;
+    if(id==2)return (int)bw_param_get((unsigned)id)*1000/3;
+    if(id==9)return (int)bw_param_get((unsigned)id)*1000/16;
+    return (int)bw_param_get((unsigned)id);
+}
+static int seq_panel_position(int panel,int k){
+    const acid_seq_t *seq=&set.seq;
+    if(panel==0){
+        if(k==0)return (int)bw_lin(seq->bpm,30,300);
+        if(k==1)return (int)bw_lin(seq->steps,1,64);
+        if(k==2)return (int)bw_lin(seq->note_density,5,100);
+        return seq->range*10;
+    }
+    if(panel==1){
+        if(k==0)return (int)bw_lin(seq->root,0,11);
+        if(k==1)return (int)bw_lin(seq->scale,0,7);
+        if(k==2)return (int)bw_lin(seq->gate,5,100);
+        return seq->accent_density*10;
+    }
+    if(k==0)return seq->slide_density*10;
+    if(k==1)return (int)bw_lin(seq->base_octave,1,5);
+    if(k==2)return (int)bw_lin(seq->slide_time,5,100);
+    return seq->clock_mode*1000;
+}
 static void draw_home(void){
     static const char *const HLAB[4]={"CUTOFF","RESONANCE","OSC MIX","VOLUME"};
+    static const unsigned HIDS[4]={19,20,18,47};
     char b[48],sub[72];
     uint32_t i;
     sub[0]=0;text_cat(sub,"O1 ");text_cat(sub,WAVE[set.p.osc1_wave]);text_cat(sub,"  O2 ");text_cat(sub,RANGE[set.p.osc2_range]);text_cat(sub," ");text_cat(sub,WAVE[set.p.osc2_wave]);text_cat(sub,"  FILTER ");text_cat(sub,set.p.filter_24db?"24dB":"12dB");
@@ -771,7 +844,7 @@ static void draw_home(void){
     for(i=0;i<4u;i++){
         int x=(i&1u)?122:6,y=(i<2u)?64:105;
         home_value_text((int)i,b);
-        ui_card(x,y,HLAB[i],b,(int)i,0);
+        ui_card(x,y,HLAB[i],b,(int)i,(int)bw_param_get(HIDS[i]),1);
     }
     cv_blit(0,0);
     cv_begin(240,96,C_BLACK);
@@ -783,10 +856,10 @@ static void draw_regular(int page){
     static const char *const LAB[PG_PRESETS][4]={{"WAVE","PW / DEPTH","PWM SRC","LFO PITCH"},{"RANGE","WAVE","PW / DEPTH","SEMITONE"},{"O1 ENV PIT","O2 ENV PIT","O2 LFO PIT","DETUNE"},{"OSC MIX","SYNC","VOLUME","-"},{"CUTOFF","RESONANCE","ENV DEPTH","LFO DEPTH"},{"ATTACK","DECAY","SUSTAIN","RELEASE"},{"ATTACK","DECAY","SUSTAIN","RELEASE"},{"TRIGGER","GLIDE","AMP VEL","MOD VEL"},{"RATE","SHAPE","DELAY","MIDI CLOCK"},{"TUNE","BEND RNG","WHEEL PIT","WHEEL FILT"},{"PITCH MOD","FILTER MOD","EG BIAS","PRESSURE"},{"PITCH MOD","FILTER MOD","EG BIAS","BREATH"},{"AUDIO AVG","PEAK","MAX WORK","DEADLINES"}};
     char b[64];uint32_t i;
     cv_begin(240,144,C_BLACK);ui_header(PAGE_NAME[page],0);
-    for(i=0;i<2u;i++){int x=i?122:6;val_text(page,(int)i,b);ui_card_large(x,67,LAB[page][i],b,(int)i,0);}
+    for(i=0;i<2u;i++){int x=i?122:6;val_text(page,(int)i,b);ui_card(x,65,LAB[page][i],b,(int)i,panel_position(page,(int)i),0);}
     cv_blit(0,0);
     cv_begin(240,96,C_BLACK);
-    for(i=2;i<4u;i++){int x=(i&1u)?122:6;val_text(page,(int)i,b);ui_card_large(x,10,LAB[page][i],b,(int)i,0);}
+    for(i=2;i<4u;i++){int x=(i&1u)?122:6;val_text(page,(int)i,b);ui_card(x,3,LAB[page][i],b,(int)i,panel_position(page,(int)i),0);}
     cv_blit(0,144);
 }
 static void draw_presets(void){
@@ -948,13 +1021,19 @@ static void draw_seq(void){
         }
         if(ui.seq_mode==SQ_GEN){
             seq_value_text(ui.seq_panel,i,v);
-            ui_card_large(x,i<2?67:10,gen[ui.seq_panel][i],v,i,0);
+            ui_card(x,i<2?65:3,gen[ui.seq_panel][i],v,i,seq_panel_position(ui.seq_panel,i),0);
         }else{
-            if(i==0)int_text(set.seq.mut_time_ops,v);
-            else if(i==1)int_text(set.seq.mut_note_ops,v);
-            else if(i==2)int_text(set.seq.mut_art_ops,v);
-            else {v[0]=0;text_cat(v,set.seq.block?"LOCKED":"UNLOCKED");}
-            ui_card_large(x,i<2?67:10,mut[i],v,i,0);
+            int ops[3]={set.seq.mut_time_ops,set.seq.mut_note_ops,set.seq.mut_art_ops};
+            int position;
+            if(i<3){
+                int_text(ops[i],v);
+                position=(int)bw_lin(ops[i],1,8);
+            }else{
+                v[0]=0;
+                text_cat(v,set.seq.block?"LOCKED":"UNLOCKED");
+                position=set.seq.block*1000;
+            }
+            ui_card(x,i<2?65:3,mut[i],v,i,position,0);
         }
     }
     cv_blit(0,144);
@@ -974,7 +1053,7 @@ void app_splash(void){
             uint32_t gp=(band*120u+y)*240u+x;uint8_t z=BST_SPLASH_4BPP[gp>>1];uint8_t pi=(gp&1u)?(z&15u):(z>>4);
             p=y*240u+x;cv_px[p]=swap16(BST_SPLASH_PAL[pi]);
         }
-        if(band==1u)cv_text(202,101,&FONT_XS,"RC3",RGB(69,194,224));
+        if(band==1u)cv_text(202,101,&FONT_XS,"1.0",RGB(69,194,224));
         cv_blit(0,band*120u);
     }
 }

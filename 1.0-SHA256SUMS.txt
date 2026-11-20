@@ -1,0 +1,4 @@
+460c96abf0c7d8cb0132a4744a39999902ea0c6c412c47317ccb25c28bc045b0  FM1-BassStation-1.0.fwsc
+7e3459c7ac8a48dab4dd6a3107f93de7e8019e7a4cd9df7ec2b88fac30fc3fd5  FM1-BassStation-1.0-Web-Editor.zip
+daeda61bdcd01d9ca40d1a067a733325dbc66a8b55a41a61f243883f35cfc76a  FM1-BassStation-1.0-Project-Source.tar.xz
+955ee6bbb75842288b7aba18875ffd785cba1d5a899c6ee907525159340e5977  recovery/FM1-BassStation-1.0-CLEAN-INSTALL-M-Flasher.bin
