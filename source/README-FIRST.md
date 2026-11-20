@@ -1,6 +1,6 @@
-# FM1 Bass Station RC1
+# FM1 Bass Station RC2
 
-RC1 is the current FM1 Bass Station test source.
+RC2 is firmware version 1.0.1. See [RC2 release notes](FM1-BassStation-RC2-Release-Notes.md) for the Home, preset browser and sequencer changes.
 
 It retains the TEST20 note-edge declick, live sequencer octave transpose,
 240x240 multipage GUI, full seven-view 303 editor, preset browser, recovered
@@ -37,7 +37,7 @@ clears from being refilled automatically on later boots.
 
 ## Safe update path
 
-Use `release/FM1-BassStation-RC1.fwsc` for normal updates. It updates the
+Use `release/FM1-BassStation-RC2.fwsc` for normal updates. It updates the
 application region and preserves the per-device USER-bank storage sectors.
 
 A generic full 1 MiB M-Flasher is not built unless
@@ -56,6 +56,8 @@ or place the matching archive in `toolchain/`.
 Host simulator:
 
     bash build.sh --host
+    mkdir -p captures
+    app/build/host/bassstation_host tests/screens.script captures
 
 ## Community preset provenance
 

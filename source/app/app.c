@@ -86,7 +86,6 @@ static struct {
     uint32_t keys, btn;
     uint8_t vel[NKEYS];
     uint8_t redraw;
-    uint8_t browse_bank, browse_preset;
     uint8_t seq_panel, seq_mode, seq_step;
     uint8_t home;                 /* TEST18: SH-101-style performance home overlay */
     char msg[2][24];
@@ -192,11 +191,15 @@ static int user_load(uint8_t slot){uint8_t chunk=(uint8_t)(slot/BANK_CHUNK_SLOTS
 static void preset_select(int idx){if(set.bank){if(idx<0)idx=(int)USER_SLOTS-1;if(idx>=(int)USER_SLOTS)idx=0;user_load((uint8_t)idx);}else{if(idx<0)idx=(int)BUILTIN_SLOTS-1;if(idx>=(int)BUILTIN_SLOTS)idx=0;builtin_load(idx);}}
 static void bank_select(uint8_t bank){int p=(int)set.preset;if(bank){set.bank=1;if(p>=(int)USER_SLOTS)p=0;user_load((uint8_t)p);app_say("PRESET BANK","USER / COMMUNITY");}else{set.bank=0;if(p>=(int)BUILTIN_SLOTS)p=0;builtin_load(p);app_say("PRESET BANK","FACTORY / INIT");}}
 
-static void browser_sync(void){ui.browse_bank=set.bank;ui.browse_preset=set.preset;}
-static void browser_open(void){browser_sync();ui.home=0;set.page=PG_PRESETS;ui.redraw=1;}
-static void browser_step(int d){int hi=ui.browse_bank?(int)USER_SLOTS-1:(int)BUILTIN_SLOTS-1;int p=(int)ui.browse_preset+(d>0?1:-1);if(p<0)p=hi;if(p>hi)p=0;ui.browse_preset=(uint8_t)p;ui.redraw=1;}
-static void browser_bank_toggle(void){ui.browse_bank^=1u;ui.browse_preset=0;ui.redraw=1;}
-static void browser_load(void){if(ui.browse_bank)user_load(ui.browse_preset);else builtin_load((int)ui.browse_preset);browser_sync();ui.redraw=1;}
+static int preset_offset(int delta){
+    int count=set.bank?(int)USER_SLOTS:(int)BUILTIN_SLOTS;
+    int slot=((int)set.preset+(delta%count))%count;
+    return slot<0?slot+count:slot;
+}
+static void browser_bank_toggle(void){
+    if(set.bank)builtin_load(0);
+    else user_load(0);
+}
 
 void app_init(void){bw_connected=0;
     int n;legacy_settings_t old;prev_settings_t prev;
@@ -215,7 +218,7 @@ void app_init(void){bw_connected=0;
     if(set.octave<-2||set.octave>2||set.page>=PG_COUNT||set.bank>1u||(set.bank?set.preset>=USER_SLOTS:set.preset>=BUILTIN_SLOTS))defaults();
     bank_cache_idx=0xffu;
     (void)user_seed_empty_slots();
-    apply_params();dirty=0;seq_dirty=0;import_on=0;import_slot=0;browser_sync();mem_zero(&seqrt,sizeof seqrt);seqrt.current_note=-1;mem_zero(&seq_undo,sizeof seq_undo);ui.seq_panel=0;ui.seq_mode=SQ_GEN;ui.seq_step=0;ui.home=0;
+    apply_params();dirty=0;seq_dirty=0;import_on=0;import_slot=0;mem_zero(&seqrt,sizeof seqrt);seqrt.current_note=-1;mem_zero(&seq_undo,sizeof seq_undo);ui.seq_panel=0;ui.seq_mode=SQ_GEN;ui.seq_step=0;ui.home=0;
 }
 static void note_on(int note,int vel){bassstation_note_on(&synth,note,vel);}
 static void note_off(int note){bassstation_note_off(&synth,note);}
@@ -245,7 +248,11 @@ static void seq_toggle_run(void){seq_set_running(!seqrt.running);}
 static void seq_midi_start_event(void){if(set.seq.clock_mode==ACID_CLOCK_MIDI){seqrt.running=1;seq_transport_reset(1);}}
 static void seq_midi_stop_event(void){if(set.seq.clock_mode==ACID_CLOCK_MIDI)seq_set_running(0);}
 static void seq_midi_clock_event(void){if(set.seq.clock_mode!=ACID_CLOCK_MIDI||!seqrt.running)return;if(seqrt.midi_phase==0u){if(seqrt.step_samples)seqrt.pos=seq_next(seqrt.pos);seq_begin_step(seqrt.pos,seq_clock_step_samples());}seqrt.midi_phase=(uint8_t)((seqrt.midi_phase+1u)%6u);}
-static void seq_mark_changed(void){acid_seq_normalize(&set.seq);seq_dirty=1;ui.redraw=1;bw_send_seq();}
+static void seq_mark_changed(void){
+    acid_seq_normalize(&set.seq);
+    if(ui.seq_step>=set.seq.steps)ui.seq_step=(uint8_t)(set.seq.steps-1u);
+    seq_dirty=1;ui.redraw=1;bw_send_seq();
+}
 static void seq_generate_action(void){acid_seq_generate(&set.seq,plat_ms()^((uint32_t)set.preset<<16)^((uint32_t)set.bank<<30),&seq_undo);seq_mark_changed();}
 static void seq_mut_time(void){acid_seq_mutate_time(&set.seq,&seq_undo);seq_mark_changed();}
 static void seq_mut_note(void){acid_seq_mutate_note(&set.seq,&seq_undo);seq_mark_changed();}
@@ -436,7 +443,6 @@ static void hard_filter_enc(int resonance,int d){
     synth.p=*p;set.custom=1;dirty=1;ui.redraw=1;bw_send_synth();
 }
 static uint8_t seq_step_move(uint8_t p,int d){int n=set.seq.steps?set.seq.steps:1u;int q=(int)p+d;while(q<0)q+=n;while(q>=n)q-=n;return (uint8_t)q;}
-static uint8_t seq_page_move(uint8_t p,int d){int n=set.seq.steps?set.seq.steps:1u,pages=(n+15)/16,page=(int)p/16,col=(int)p&15,q,base,count;if(pages<1)pages=1;page=(page+d)%pages;if(page<0)page+=pages;base=page*16;count=n-base;if(count>16)count=16;if(count<1)count=1;if(col>=count)col=count-1;q=base+col;return (uint8_t)q;}
 static int seq_pitch_semitone(uint8_t st){int i,n=set.seq.steps?set.seq.steps:1u,k;if(st>=n)st=0;k=acid_seq_kind(&set.seq,st);if(k==ACID_NOTE)return acid_seq_degree_semitone(&set.seq,acid_seq_degree(&set.seq,st));if(k!=ACID_TIE)return -1;for(i=1;i<=n;i++){int q=(int)st-i;while(q<0)q+=n;if(acid_seq_kind(&set.seq,(uint8_t)q)==ACID_NOTE)return acid_seq_degree_semitone(&set.seq,acid_seq_degree(&set.seq,(uint8_t)q));if(acid_seq_kind(&set.seq,(uint8_t)q)==ACID_REST)break;}return -1;}
 static int seq_art_state(uint8_t p){return (acid_seq_accent(&set.seq,p)?1:0)|(acid_seq_slide(&set.seq,p)?2:0);}
 
@@ -503,7 +509,6 @@ static void knob(int k,int d){
             else if(k==2)set.seq.slide_time=(uint8_t)stepi((int)set.seq.slide_time,d*2,5,100);
             else if(k==3)set.seq.gate=(uint8_t)stepi((int)set.seq.gate,d*2,5,100);
         }
-        if(ui.seq_step>=set.seq.steps)ui.seq_step=(uint8_t)(set.seq.steps-1u);
         seq_mark_changed();return;
     }
     if(page==PG_OSC1){if(k==0)p->osc1_wave=(uint8_t)stepi(p->osc1_wave,d,0,1);if(k==1)p->osc1_pw=stepf(p->osc1_pw,d*0.02f,0,1);if(k==2)p->osc1_pwm_source=(uint8_t)stepi(p->osc1_pwm_source,d,0,2);if(k==3)p->osc1_lfo_pitch=stepf(p->osc1_lfo_pitch,d*0.1f,-12,12);}
@@ -547,7 +552,7 @@ static void input(void){
         if(k==B_OCTDN)octave_step(-1);
         else if(k==B_OCTUP)octave_step(1);
         else if(k==B_HOME){set.page=PG_OSC1;ui.home=1;ui.redraw=1;}
-        else if(k==B_SEL){if(set.page==PG_PRESETS)browser_load();else browser_open();}
+        else if(k==B_SEL){set.page=PG_PRESETS;ui.redraw=1;}
         else if(set.page==PG_SEQ&&(k==B_SEQ||k==B_EDIT||k==B_PLAY||k==B_REC||k==B_ARP||k==B_ENV||k==B_LFO||k==B_GLO||k==B_FX))seq_button_action(k);
         else if(k==B_SEQ){set.page=PG_SEQ;ui.seq_mode=SQ_GEN;ui.redraw=1;}
         else if(k==B_EDIT){
@@ -573,21 +578,20 @@ static void input(void){
         else if(k==B_SAVE){int ok=1;set.p=synth.p;if(set.bank)ok=user_store(set.preset,&set.p,0,0);if(ok&&plat_store_save(OBJ_SETTINGS,&set,sizeof set)==0){dirty=0;seq_dirty=0;set.custom=0;app_say(set.bank?"USER PATCH":"SETTINGS","SAVED");bw_send_synth();bw_send_seq();}else app_say("SAVE","FAILED");}
     }
     if((e=plat_enc(EN_SELECT))!=0){
-        if(set.page==PG_PRESETS){ui.home=0;browser_step(e);}
+        if(set.page==PG_PRESETS)preset_select(preset_offset(e));
         else hard_filter_enc(0,e);
     }
     if((e=plat_enc(EN_ALGO))!=0){
-        if(set.page==PG_PRESETS){ui.home=0;if(e)browser_bank_toggle();}
+        if(set.page==PG_PRESETS)browser_bank_toggle();
         else hard_filter_enc(1,e);
     }
     if((e=plat_enc(EN_PRESET))!=0){
-        if(set.page==PG_PRESETS)browser_step(e);
-        else if(set.page==PG_SEQ){
+        if(set.page==PG_SEQ){
             if(ui.seq_mode>=SQ_PIANO)ui.seq_step=seq_step_move(ui.seq_step,e>0?1:-1);
             else if(ui.seq_mode==SQ_GEN){int q=(int)ui.seq_panel+(e>0?1:-1);if(q<0)q=2;if(q>2)q=0;ui.seq_panel=(uint8_t)q;}
             ui.redraw=1;
         }
-        else{int p=(int)set.preset+(e>0?1:-1),hi=set.bank?(int)USER_SLOTS-1:(int)BUILTIN_SLOTS-1;if(p<0)p=hi;if(p>hi)p=0;preset_select(p);}
+        else preset_select(preset_offset(e));
     }
     for(k=0;k<4;k++)if((e=plat_enc((int)EN_K1+(int)k))!=0)knob((int)k,e);
     ui.keys=keys;ui.btn=btn;plat_glow(1);plat_leds(btn|((dirty||seq_dirty)?1u<<B_SAVE:0u),keys);
@@ -616,8 +620,6 @@ static void val_text(int page,int k,char *b){bassstation_params_t *p=&set.p;b[0]
     }
 }
 static void browser_name(uint8_t bank,uint8_t slot,char *b){b[0]=0;if(bank){user_name(slot,b);if(!b[0])text_cat(b,"EMPTY");}else if(slot==0u)text_cat(b,"INIT");else text_cat(b,bst_factory_name[slot-1u]);}
-static void browser_slot_text(uint8_t bank,uint8_t slot,char *b){char n[12];b[0]=0;if(bank){text_cat(b,"USER ");int_text((int32_t)slot+1,n);text_cat(b,n);text_cat(b," / 128");}else if(slot==0u)text_cat(b,"INIT");else{text_cat(b,"FACTORY ");int_text((int32_t)slot,n);text_cat(b,n);text_cat(b," / 100");}}
-static uint8_t browser_neighbor(uint8_t bank,uint8_t slot,int d){int hi=bank?(int)USER_SLOTS-1:(int)BUILTIN_SLOTS-1;int p=(int)slot+d;if(p<0)p=hi;if(p>hi)p=0;return (uint8_t)p;}
 static const char *seq_kind_name(int k){return k==ACID_NOTE?"NOTE":(k==ACID_TIE?"TIE":"REST");}
 static void seq_note_text(int note,char *b){static const char *const N[12]={"C","C#","D","D#","E","F","F#","G","G#","A","A#","B"};char q[12];b[0]=0;if(note<0){text_cat(b,"-");return;}text_cat(b,N[note%12]);int_text(note/12-1,q);text_cat(b,q);}
 static void seq_pct(uint8_t v,char *b){char q[12];b[0]=0;int_text(v,q);text_cat(b,q);text_cat(b,"%");}
@@ -626,7 +628,7 @@ static void seq_value_text(int panel,int k,char *b){char q[16];b[0]=0;
     else if(panel==1){if(k==0)text_cat(b,acid_seq_root_name(set.seq.root));else if(k==1)text_cat(b,acid_seq_scale_name(set.seq.scale));else if(k==2)seq_pct(set.seq.gate,b);else seq_pct(set.seq.accent_density,b);}
     else{if(k==0)seq_pct(set.seq.slide_density,b);else if(k==1){text_cat(b,"C");int_text(set.seq.base_octave,q);text_cat(b,q);}else if(k==2)seq_pct(set.seq.slide_time,b);else text_cat(b,set.seq.clock_mode==ACID_CLOCK_MIDI?"MIDI":"INTERNAL");}
 }
-static void seq_art_text(uint8_t st,char *b){int a=acid_seq_accent(&set.seq,st),sl=acid_seq_slide(&set.seq,st);b[0]=0;if(a&&sl)text_cat(b,"ACC+SLIDE");else if(a)text_cat(b,"ACCENT");else if(sl)text_cat(b,"SLIDE");else text_cat(b,"PLAIN");}
+static void seq_art_text(uint8_t st,char *b){int a=acid_seq_accent(&set.seq,st),sl=acid_seq_slide(&set.seq,st);b[0]=0;if(a&&sl)text_cat(b,"A + S");else if(a)text_cat(b,"ACC");else if(sl)text_cat(b,"SLIDE");else text_cat(b,"PLAIN");}
 
 static uint16_t ui_cyan(void){return RGB(54,205,232);}
 static uint16_t ui_line(void){return RGB(25,73,88);}
@@ -644,15 +646,15 @@ static void ui_header(const char *title,const char *sub){
     uint16_t cyan=ui_cyan(),white=ui_white(),dim=ui_dim();
     cv_rect(0,0,240,25,ui_panel2());
     cv_text(7,6,&FONT_XS,"NOVATION",white);
-    cv_text(71,6,&FONT_XS,"BASS STATION",cyan);
+    cv_text(7+text_w(&FONT_XS,"NOVATION")+9,6,&FONT_XS,"BASS STATION",cyan);
     cv_rect(0,25,240,2,cyan);
     if(plat_ms()<ui.msg_until){
         ui_fit_text(8,32,224,ui.msg[0],white);
-        cv_text(8,51,&FONT_XS,ui.msg[1],cyan);
+        cv_text(8,48,&FONT_XS,ui.msg[1],cyan);
     }else{
         ui_fit_text(8,32,190,title,white);
-        if(sub&&*sub)cv_text(8,51,&FONT_XS,sub,dim);
-        if(set.custom)cv_text(194,35,&FONT_XS,"EDIT",cyan);
+        if(sub&&*sub)cv_text(8,48,&FONT_XS,sub,dim);
+        if(set.custom)cv_text(233-text_w(&FONT_XS,"EDIT"),33,&FONT_XS,"EDIT",cyan);
     }
 }
 static void ui_card(int x,int y,const char *label,const char *value,int k,int active){
@@ -675,30 +677,24 @@ static void ui_card_large(int x,int y,const char *label,const char *value,int k,
     cv_text(x+91,y+8,&FONT_XS,kn,cyan);
     ui_fit_text(x+8,y+35,96,value,white);
 }
-static void current_preset_name(char *b){
-    b[0]=0;
-    if(set.bank){user_name(set.preset,b);if(!b[0])text_cat(b,"EMPTY USER SLOT");}
-    else if(set.preset==0u)text_cat(b,"INIT");
-    else text_cat(b,bst_factory_name[set.preset-1u]);
-}
 static void current_preset_slot(char *b){
     char n[12];b[0]=0;
-    if(set.bank){text_cat(b,"USER ");int_text((int32_t)set.preset+1,n);text_cat(b,n);text_cat(b,"/128");}
-    else if(set.preset==0u)text_cat(b,"INIT");
-    else{text_cat(b,"FACTORY ");int_text((int32_t)set.preset,n);text_cat(b,n);text_cat(b,"/100");}
+    if(set.bank){text_cat(b,"USER ");int_text((int32_t)set.preset+1,n);text_cat(b,n);text_cat(b," / 128");}
+    else if(set.preset==0u)text_cat(b,"FACTORY");
+    else{text_cat(b,"FACTORY ");int_text((int32_t)set.preset,n);text_cat(b,n);text_cat(b," / 100");}
 }
-static void ui_footer(const char *hint){
-    char nm[32],sl[32];uint16_t cyan=ui_cyan(),white=ui_white(),dim=ui_dim();
-    current_preset_name(nm);current_preset_slot(sl);
-    cv_begin(240,96,C_BLACK);
-    cv_rect(0,0,240,2,cyan);
-    cv_text(8,7,&FONT_XS,sl,dim);
-    ui_fit_text(8,20,224,nm,set.custom?cyan:white);
-    cv_rect(8,41,224,1,ui_line());
-    if(hint&&*hint)cv_text(8,47,&FONT_XS,hint,white);
-    cv_text(8,63,&FONT_XS,"HOME  EDIT  FX  ENV  LFO  GLO  SEQ",dim);
-    cv_text(8,79,&FONT_XS,"SEL PRESETS   PRESET PATCH   SAVE STORE",dim);
-    cv_blit(0,144);
+static void draw_preset_name(int y){
+    char name[32],slot[32];
+    const felucca_font_t *font=&FONT_L;
+    browser_name(set.bank,set.preset,name);
+    current_preset_slot(slot);
+    if(text_w(font,name)>200)font=&FONT_M;
+    if(text_w(font,name)>200)font=&FONT_B;
+    if(text_w(font,name)>200)font=&FONT_XS;
+    cv_rect(6,y,228,82,ui_line());
+    cv_rect(7,y+1,226,80,ui_panel());
+    cv_text(16,y+9,&FONT_XS,slot,ui_dim());
+    cv_text(16,y+53-font->h/2,font,name,set.custom?ui_cyan():ui_white());
 }
 static void home_value_text(int k,char *b){
     bassstation_params_t *p=&set.p;b[0]=0;
@@ -709,15 +705,22 @@ static void home_value_text(int k,char *b){
 }
 static void draw_home(void){
     static const char *const HLAB[4]={"CUTOFF","RESONANCE","OSC MIX","VOLUME"};
-    char b[48],sub[72],q[16];uint32_t i;uint16_t cyan=ui_cyan(),dim=ui_dim();
+    char b[48],sub[72];
+    uint32_t i;
     sub[0]=0;text_cat(sub,"O1 ");text_cat(sub,WAVE[set.p.osc1_wave]);text_cat(sub,"  O2 ");text_cat(sub,RANGE[set.p.osc2_range]);text_cat(sub," ");text_cat(sub,WAVE[set.p.osc2_wave]);text_cat(sub,"  FILTER ");text_cat(sub,set.p.filter_24db?"24dB":"12dB");
-    cv_begin(240,144,C_BLACK);ui_header("HOME / PERFORMANCE",sub);
-    for(i=0;i<4u;i++){int x=(i&1u)?122:6,y=(i<2u)?61:103;home_value_text((int)i,b);ui_card(x,y,HLAB[i],b,(int)i,0);}
+    cv_begin(240,144,C_BLACK);
+    ui_header("HOME",sub);
+    for(i=0;i<4u;i++){
+        int x=(i&1u)?122:6,y=(i<2u)?64:105;
+        home_value_text((int)i,b);
+        ui_card(x,y,HLAB[i],b,(int)i,0);
+    }
     cv_blit(0,0);
-    b[0]=0;text_cat(b,"OCT ");int_text(set.octave,q);text_cat(b,q);text_cat(b,"   K1-4 PERFORMANCE CONTROLS");
-    ui_footer(b);
-    (void)cyan;(void)dim;
+    cv_begin(240,96,C_BLACK);
+    draw_preset_name(8);
+    cv_blit(0,144);
 }
+
 static void draw_regular(int page){
     static const char *const LAB[PG_PRESETS][4]={{"WAVE","PW / DEPTH","PWM SRC","LFO PITCH"},{"RANGE","WAVE","PW / DEPTH","SEMITONE"},{"O1 ENV PIT","O2 ENV PIT","O2 LFO PIT","DETUNE"},{"OSC MIX","SYNC","VOLUME","-"},{"CUTOFF","RESONANCE","ENV DEPTH","LFO DEPTH"},{"ATTACK","DECAY","SUSTAIN","RELEASE"},{"ATTACK","DECAY","SUSTAIN","RELEASE"},{"TRIGGER","GLIDE","AMP VEL","MOD VEL"},{"RATE","SHAPE","DELAY","MIDI CLOCK"},{"TUNE","BEND RNG","WHEEL PIT","WHEEL FILT"},{"PITCH MOD","FILTER MOD","EG BIAS","PRESSURE"},{"PITCH MOD","FILTER MOD","EG BIAS","BREATH"},{"AUDIO AVG","PEAK","MAX WORK","DEADLINES"}};
     char b[64];uint32_t i;
@@ -729,58 +732,173 @@ static void draw_regular(int page){
     cv_blit(0,144);
 }
 static void draw_presets(void){
-    char nm[32],slot[32],prev[32],next[32],pn[32],nn[32],b[64];uint16_t cyan=ui_cyan(),white=ui_white(),dim=ui_dim();uint8_t ps=browser_neighbor(ui.browse_bank,ui.browse_preset,-1),ns=browser_neighbor(ui.browse_bank,ui.browse_preset,1);
-    browser_name(ui.browse_bank,ui.browse_preset,nm);browser_slot_text(ui.browse_bank,ui.browse_preset,slot);browser_name(ui.browse_bank,ps,pn);browser_name(ui.browse_bank,ns,nn);
-    prev[0]=0;text_cat(prev,"< ");text_cat(prev,pn);next[0]=0;text_cat(next,"> ");text_cat(next,nn);
-    cv_begin(240,144,C_BLACK);ui_header("PRESET BROWSER",ui.browse_bank?"USER / COMMUNITY":"FACTORY / INIT");
-    cv_text(8,68,&FONT_XS,slot,dim);ui_fit_text(8,88,224,nm,cyan);
-    cv_rect(8,119,224,1,ui_line());cv_text(8,126,&FONT_XS,prev,dim);cv_text(122,126,&FONT_XS,next,dim);
+    char previous[32]="< ",next[32]="> ";
+    browser_name(set.bank,(uint8_t)preset_offset(-1),previous+2);
+    browser_name(set.bank,(uint8_t)preset_offset(1),next+2);
+    cv_begin(240,144,C_BLACK);
+    ui_header("PRESETS",set.bank?"USER / COMMUNITY":"FACTORY / INIT");
+    draw_preset_name(62);
     cv_blit(0,0);
     cv_begin(240,96,C_BLACK);
-    b[0]=0;if(ui.browse_bank==set.bank&&ui.browse_preset==set.preset)text_cat(b,"CURRENTLY LOADED");else text_cat(b,"PRESS SEL TO LOAD");
-    ui_fit_text(8,10,224,b,white);
-    cv_text(8,46,&FONT_XS,"SELECT/PRESET BROWSE",dim);
-    cv_text(8,63,&FONT_XS,"ALGO BANK   SEL LOAD   HOME EXIT",white);
+    cv_text(8,7,&FONT_XS,previous,ui_dim());
+    cv_text(8,27,&FONT_XS,next,ui_dim());
+    cv_rect(8,49,224,1,ui_line());
+    cv_text(8,57,&FONT_XS,"SELECT / PRESET   CHANGE PATCH",ui_white());
+    cv_text(8,76,&FONT_XS,"ALGO   BANK     HOME   EXIT",ui_dim());
     cv_blit(0,144);
 }
 static const char *seq_mode_name(uint8_t mode){
     static const char *const N[SQ_MODE_COUNT]={"GENERATE","MUTATE","PIANO ROLL","GATE","OCTAVE","ACCENT","SLIDE"};
     return N[mode<SQ_MODE_COUNT?mode:0u];
 }
-static void seq_bar_text(char *b){char q[12];uint8_t base=(uint8_t)((ui.seq_step/16u)*16u);b[0]=0;text_cat(b,"BAR ");int_text((int32_t)(base/16u)+1,q);text_cat(b,q);text_cat(b,"/4   STEPS ");int_text((int32_t)base+1,q);text_cat(b,q);text_cat(b,"-");int_text((int32_t)base+16,q);text_cat(b,q);}
-static uint16_t seq_step_colour(uint8_t st){int k=acid_seq_kind(&set.seq,st);uint16_t c=k==ACID_NOTE?RGB(24,70,112):(k==ACID_TIE?ui_line():ui_panel2());if(acid_seq_slide(&set.seq,st))c=RGB(18,105,122);if(acid_seq_accent(&set.seq,st))c=RGB(185,215,222);return c;}
-static void draw_seq_piano(void){
-    static const uint8_t black[12]={0,1,0,1,0,0,1,0,1,0,1,0};
-    char q[64],v[32],n[16];uint16_t cyan=ui_cyan(),white=ui_white(),dim=ui_dim();int row,col;uint8_t base=(uint8_t)((ui.seq_step/16u)*16u);
-    seq_bar_text(q);cv_text(8,51,&FONT_XS,q,dim);
-    for(row=0;row<12;row++){
-        int semi=11-row,y=60+row*6,allowed=acid_seq_scale_has_semitone(&set.seq,semi);uint16_t key=black[semi]?RGB(22,28,31):RGB(142,153,157);
-        if(!allowed)key=RGB(39,48,52);
-        cv_rect(6,y,42,5,key);
-        if(semi==0)cv_rect(6,y,3,5,cyan);
-        for(col=0;col<16;col++){uint8_t st=(uint8_t)(base+col);int x=55+col*11,ps=-1;uint16_t c=allowed?ui_panel2():ui_panel();if(st>=set.seq.steps)c=RGB(5,10,13);else ps=seq_pitch_semitone(st);if(ps==semi&&acid_seq_kind(&set.seq,st)!=ACID_REST)c=seq_step_colour(st);if(st==ui.seq_step&&ps==semi)c=cyan;cv_rect(x,y,9,5,c);}
-    }
-    {int sx=55+((int)ui.seq_step-(int)base)*11;if(sx>=55&&sx<231){cv_rect(sx,60,1,72,cyan);if(seqrt.running&&seqrt.pos>=base&&seqrt.pos<base+16u)cv_rect(55+((int)seqrt.pos-(int)base)*11+8,60,1,72,white);}}
-    q[0]=0;text_cat(q,"STEP ");int_text((int32_t)ui.seq_step+1,n);text_cat(q,n);text_cat(q,"  ");seq_note_text(acid_seq_midi_note(&set.seq,ui.seq_step),v);text_cat(q,v);text_cat(q,"  ");text_cat(q,seq_kind_name(acid_seq_kind(&set.seq,ui.seq_step)));cv_text(8,132,&FONT_XS,q,white);
+static void seq_bar_text(char *b){
+    char n[12];
+    b[0]=0;
+    text_cat(b,"BAR ");int_text(ui.seq_step/16+1,n);text_cat(b,n);
+    text_cat(b,"/");int_text((set.seq.steps+15)/16,n);text_cat(b,n);
+    text_cat(b,"    STEP ");int_text(ui.seq_step+1,n);text_cat(b,n);
+    text_cat(b,"/");int_text(set.seq.steps,n);text_cat(b,n);
 }
-static void draw_seq_lanes(uint8_t mode){
-    static const char *const gate_lab[3]={"REST","NOTE","TIE"};static const char *const oct_lab[5]={"+2","+1","0","-1","-2"};static const char *const on_lab[2]={"OFF","ON"};
-    char q[64],v[32],n[16];uint16_t cyan=ui_cyan(),white=ui_white(),dim=ui_dim();int rows,row,col,rowh,y0=64;const char *const *lab;uint8_t base=(uint8_t)((ui.seq_step/16u)*16u);
-    if(mode==SQ_GATE){rows=3;rowh=18;lab=gate_lab;}else if(mode==SQ_OCT){rows=5;rowh=11;lab=oct_lab;}else{rows=2;rowh=27;lab=on_lab;}
-    seq_bar_text(q);cv_text(8,51,&FONT_XS,q,dim);
-    for(row=0;row<rows;row++){int y=y0+row*rowh;cv_text(7,y+3,&FONT_XS,lab[row],dim);for(col=0;col<16;col++){uint8_t st=(uint8_t)(base+col);int x=48+col*11,state=-1;uint16_t c=ui_panel2();if(st>=set.seq.steps)c=RGB(5,10,13);else if(mode==SQ_GATE)state=acid_seq_kind(&set.seq,st);else if(mode==SQ_OCT)state=2-(int)set.seq.step[st].octave;else if(mode==SQ_ACC)state=acid_seq_accent(&set.seq,st)?1:0;else state=acid_seq_slide(&set.seq,st)?1:0;if(state==row)c=seq_step_colour(st);if(st==ui.seq_step&&state==row)c=cyan;cv_rect(x,y,9,rowh-3,c);}}
-    q[0]=0;text_cat(q,"STEP ");int_text((int32_t)ui.seq_step+1,n);text_cat(q,n);text_cat(q,"  ");if(mode==SQ_GATE)text_cat(q,seq_kind_name(acid_seq_kind(&set.seq,ui.seq_step)));else if(mode==SQ_OCT){text_cat(q,"OCT ");int_text((int32_t)set.seq.step[ui.seq_step].octave,n);text_cat(q,n);}else if(mode==SQ_ACC)text_cat(q,acid_seq_accent(&set.seq,ui.seq_step)?"ACCENT ON":"ACCENT OFF");else text_cat(q,acid_seq_slide(&set.seq,ui.seq_step)?"SLIDE ON":"SLIDE OFF");seq_note_text(acid_seq_midi_note(&set.seq,ui.seq_step),v);text_cat(q,"   ");text_cat(q,v);cv_text(8,126,&FONT_XS,q,white);
+static uint16_t seq_step_colour(uint8_t st){
+    int kind=acid_seq_kind(&set.seq,st);
+    if(acid_seq_accent(&set.seq,st))return RGB(185,215,222);
+    if(acid_seq_slide(&set.seq,st))return RGB(18,105,122);
+    if(kind==ACID_NOTE)return RGB(34,118,167);
+    if(kind==ACID_TIE)return ui_line();
+    return RGB(58,78,89);
+}
+
+static void seq_edit_value(uint8_t mode,int knob,char *b){
+    uint8_t step=ui.seq_step;
+    b[0]=0;
+    if(mode==SQ_PIANO){
+        if(knob==0)seq_note_text(acid_seq_midi_note(&set.seq,step),b);
+        else if(knob==1)int_text(set.seq.step[step].octave,b);
+        else if(knob==2)text_cat(b,seq_kind_name(acid_seq_kind(&set.seq,step)));
+        else seq_art_text(step,b);
+    }else if(mode==SQ_GATE){
+        if(knob==0)text_cat(b,seq_kind_name(acid_seq_kind(&set.seq,step)));
+        else if(knob==1)seq_pct(set.seq.gate,b);
+        else if(knob==2)seq_pct(set.seq.note_density,b);
+        else int_text(set.seq.steps,b);
+    }else if(mode==SQ_OCT){
+        if(knob==0)int_text(set.seq.step[step].octave,b);
+        else if(knob==1)int_text(set.seq.base_octave,b);
+        else if(knob==2)seq_pct(set.seq.range,b);
+        else text_cat(b,acid_seq_root_name(set.seq.root));
+    }else if(mode==SQ_ACC){
+        if(knob==0)text_cat(b,acid_seq_accent(&set.seq,step)?"ON":"OFF");
+        else if(knob==1)seq_pct(set.seq.accent_density,b);
+        else if(knob==2)int_text(set.seq.mut_art_ops,b);
+        else text_cat(b,set.seq.block?"ON":"OFF");
+    }else{
+        if(knob==0)text_cat(b,acid_seq_slide(&set.seq,step)?"ON":"OFF");
+        else if(knob==1)seq_pct(set.seq.slide_density,b);
+        else if(knob==2)seq_pct(set.seq.slide_time,b);
+        else seq_pct(set.seq.gate,b);
+    }
+}
+static void draw_seq_grid(uint8_t mode){
+    static const uint8_t black[12]={0,1,0,1,0,0,1,0,1,0,1,0};
+    static const char *const gate[3]={"REST","NOTE","TIE"};
+    static const char *const oct[5]={"+2","+1","0","-1","-2"};
+    static const char *const toggle[2]={"OFF","ON"};
+    uint8_t base=(uint8_t)((ui.seq_step/16u)*16u);
+    int rows=mode==SQ_PIANO?12:mode==SQ_GATE?3:mode==SQ_OCT?5:2;
+    int rowh=132/rows;
+    int gap=mode==SQ_PIANO?1:3;
+    int row,col;
+    const char *const *labels=mode==SQ_GATE?gate:mode==SQ_OCT?oct:toggle;
+
+    uint16_t background[12];
+    for(row=0;row<rows;row++){
+        int y=6+row*rowh;
+        background[row]=ui_panel2();
+        if(mode==SQ_PIANO){
+            int semi=11-row;
+            uint16_t key=black[semi]?RGB(40,49,54):RGB(142,153,157);
+            if(!acid_seq_scale_has_semitone(&set.seq,semi))background[row]=ui_panel();
+            cv_rect(6,y,black[semi]?25:34,rowh-gap,key);
+            if(semi==0)cv_rect(6,y,3,rowh-gap,ui_cyan());
+        }else cv_text(7,y+(rowh-gap-FONT_XS.h)/2,&FONT_XS,labels[row],ui_dim());
+    }
+    for(col=0;col<16;col++){
+        uint8_t step=(uint8_t)(base+col);
+        int enabled=step<set.seq.steps;
+        int state=-1;
+        uint16_t active=ui_cyan();
+        if(enabled){
+            if(step!=ui.seq_step)active=seq_step_colour(step);
+            if(mode==SQ_PIANO)state=11-seq_pitch_semitone(step);
+            else if(mode==SQ_GATE)state=acid_seq_kind(&set.seq,step);
+            else if(mode==SQ_OCT)state=2-set.seq.step[step].octave;
+            else if(mode==SQ_ACC)state=acid_seq_accent(&set.seq,step)?1:0;
+            else state=acid_seq_slide(&set.seq,step)?1:0;
+        }
+        for(row=0;row<rows;row++){
+            uint16_t cell=enabled?background[row]:RGB(5,10,13);
+            if(row==state)cell=active;
+            cv_rect(43+col*12,6+row*rowh,10,rowh-gap,cell);
+        }
+    }
+    cv_rect(43+(ui.seq_step-base)*12,3,10,2,ui_cyan());
+    if(seqrt.running&&seqrt.pos>=base&&seqrt.pos<base+16u)
+        cv_rect(43+(seqrt.pos-base)*12,139,10,2,ui_white());
+}
+static void draw_seq_editor(uint8_t mode){
+    static const char *const labels[5][4]={
+        {"PITCH","OCTAVE","GATE","ACC/SLD"},
+        {"STEP","GATE","DENSITY","LENGTH"},
+        {"STEP","BASE","RANGE","ROOT"},
+        {"STEP","DENSITY","OPS","BLOCK"},
+        {"STEP","DENSITY","TIME","GATE"}
+    };
+    char v[32];
+    int i;
+    seq_bar_text(v);
+    cv_begin(240,96,C_BLACK);
+    ui_header(seq_mode_name(mode),v);
+    for(i=0;i<4;i++){
+        int x=6+i*58;
+        cv_rect(x,65,54,30,ui_panel2());
+        cv_text(x+4,66,&FONT_T,labels[mode-SQ_PIANO][i],ui_dim());
+        seq_edit_value(mode,i,v);
+        ui_fit_text(x+4,78,46,v,ui_white());
+    }
+    cv_blit(0,0);
+    cv_begin(240,144,C_BLACK);
+    draw_seq_grid(mode);
+    cv_blit(0,96);
 }
 static void draw_seq(void){
-    static const char *const LAB0[3][4]={{"TEMPO","STEPS","NOTE DENS","RANGE"},{"ROOT","SCALE","GATE","ACCENT"},{"SLIDE","BASE OCT","SLIDE TIME","CLOCK"}};char v[48];uint32_t i;
-    cv_begin(240,144,C_BLACK);ui_header(seq_mode_name(ui.seq_mode),0);
-    if(ui.seq_mode==SQ_GEN){for(i=0;i<2u;i++){int x=i?122:6;seq_value_text(ui.seq_panel,(int)i,v);ui_card_large(x,67,LAB0[ui.seq_panel][i],v,(int)i,0);}}
-    else if(ui.seq_mode==SQ_MUTATE){static const char *const MLAB[4]={"TIME OPS","NOTE/OCT OPS","ACC/SLD OPS","BLOCK SEED"};for(i=0;i<2u;i++){int x=i?122:6;v[0]=0;if(i==0)int_text(set.seq.mut_time_ops,v);else int_text(set.seq.mut_note_ops,v);ui_card_large(x,67,MLAB[i],v,(int)i,0);}}
-    else if(ui.seq_mode==SQ_PIANO)draw_seq_piano();else draw_seq_lanes(ui.seq_mode);
-    cv_blit(0,0);
-    cv_begin(240,96,C_BLACK);
-    if(ui.seq_mode==SQ_GEN){for(i=2;i<4u;i++){int x=(i&1u)?122:6;seq_value_text(ui.seq_panel,(int)i,v);ui_card_large(x,10,LAB0[ui.seq_panel][i],v,(int)i,0);}}
-    else if(ui.seq_mode==SQ_MUTATE){static const char *const MLAB2[4]={"TIME OPS","NOTE/OCT OPS","ACC/SLD OPS","BLOCK SEED"};for(i=2;i<4u;i++){int x=(i&1u)?122:6;v[0]=0;if(i==2)int_text(set.seq.mut_art_ops,v);else text_cat(v,set.seq.block?"LOCKED":"UNLOCKED");ui_card_large(x,10,MLAB2[i],v,(int)i,0);}}
+    static const char *const gen[3][4]={{"TEMPO","STEPS","NOTE DENS","RANGE"},{"ROOT","SCALE","GATE","ACCENT"},{"SLIDE","BASE OCT","SLIDE TIME","CLOCK"}};
+    static const char *const mut[4]={"TIME OPS","NOTE/OCT","ACC/SLD","BLOCK SEED"};
+    static const char *const panels[3]={"1 / 3    TIMING","2 / 3    KEY & GATE","3 / 3    SLIDE & CLOCK"};
+    int i;
+    char v[32];
+    if(ui.seq_mode>=SQ_PIANO){
+        draw_seq_editor(ui.seq_mode);
+        return;
+    }
+    cv_begin(240,144,C_BLACK);
+    ui_header(seq_mode_name(ui.seq_mode),ui.seq_mode==SQ_GEN?panels[ui.seq_panel]:"ENV   TIME    LFO   NOTE    GLO   ART");
+    for(i=0;i<4;i++){
+        int x=(i&1)?122:6;
+        if(i==2){
+            cv_blit(0,0);
+            cv_begin(240,96,C_BLACK);
+        }
+        if(ui.seq_mode==SQ_GEN){
+            seq_value_text(ui.seq_panel,i,v);
+            ui_card_large(x,i<2?67:10,gen[ui.seq_panel][i],v,i,0);
+        }else{
+            if(i==0)int_text(set.seq.mut_time_ops,v);
+            else if(i==1)int_text(set.seq.mut_note_ops,v);
+            else if(i==2)int_text(set.seq.mut_art_ops,v);
+            else {v[0]=0;text_cat(v,set.seq.block?"LOCKED":"UNLOCKED");}
+            ui_card_large(x,i<2?67:10,mut[i],v,i,0);
+        }
+    }
     cv_blit(0,144);
 }
 static void draw(void){
@@ -798,7 +916,7 @@ void app_splash(void){
             uint32_t gp=(band*120u+y)*240u+x;uint8_t z=BST_SPLASH_4BPP[gp>>1];uint8_t pi=(gp&1u)?(z&15u):(z>>4);
             p=y*240u+x;cv_px[p]=swap16(BST_SPLASH_PAL[pi]);
         }
-        if(band==1u)cv_text(202,101,&FONT_XS,"RC1",RGB(69,194,224));
+        if(band==1u)cv_text(202,101,&FONT_XS,"RC2",RGB(69,194,224));
         cv_blit(0,band*120u);
     }
 }
@@ -807,7 +925,7 @@ void app_ui_init(void){touch_on(1);lcd_fill(0,0,240,240,C_BLACK);ui.home=0;ui.re
 void app_frame(void){input();if(seqrt.redraw_pending){seqrt.redraw_pending=0;ui.redraw=1;}if(ui.msg_until&&plat_ms()>=ui.msg_until){ui.msg_until=0;ui.redraw=1;}if(ui.redraw){ui.redraw=0;draw();}}
 #ifdef PLAT_HOST
 static int host_num(const char *s){int v=0,neg=0;if(!s)return 0;if(*s=='-'){neg=1;s++;}while(*s>='0'&&*s<='9'){v=v*10+(*s-'0');s++;}return neg?-v:v;}
-void app_host_reboot(void){bw_connected=0;bank_cache_idx=0xffu;import_on=0;import_slot=0;dirty=0;seq_dirty=0;ui.keys=ui.btn=0;ui.msg_until=0;ui.home=0;browser_sync();mem_zero(&seqrt,sizeof seqrt);seqrt.current_note=-1;mem_zero(&seq_undo,sizeof seq_undo);}
+void app_host_reboot(void){bw_connected=0;bank_cache_idx=0xffu;import_on=0;import_slot=0;dirty=0;seq_dirty=0;ui.keys=ui.btn=0;ui.msg_until=0;ui.home=0;mem_zero(&seqrt,sizeof seqrt);seqrt.current_note=-1;mem_zero(&seq_undo,sizeof seq_undo);}
 int app_host_cmd(const char *cmd,const char *a,const char *b,const char *c,const char *d){uint8_t q[80],f[76];if(!strcmp(cmd,"rackrx")){if(bassstation_rack_sysex_encode(&set.p,f)==76u)app_sysex(f+1,74u);return 1;}if(!strcmp(cmd,"pluginrx")){int slot=host_num(a),src=host_num(b),i;if(slot<0||slot>=(int)USER_SLOTS||src<0||src>=100)return 1;q[0]=0x7d;q[1]='B';q[2]='S';q[3]=8;q[4]=0x30;q[5]=(uint8_t)slot;for(i=0;i<34;i++){q[6+i*2]=(uint8_t)(bst_factory_record[src][i]>>4);q[7+i*2]=(uint8_t)(bst_factory_record[src][i]&15u);}app_sysex(q,74);return 1;}if(!strcmp(cmd,"bwctl")){
         q[0]=0x7d;q[1]='B';q[2]='W';q[3]=BW_PROTO;
         if(!strcmp(a,"HELLO")){q[4]=BW_HELLO;app_sysex(q,5);}
@@ -823,5 +941,5 @@ int app_host_cmd(const char *cmd,const char *a,const char *b,const char *c,const
     }
     if(strcmp(cmd,"bsctl"))return 0;
     q[0]=0x7d;q[1]='B';q[2]='S';q[3]=7;if(!strcmp(a,"START")){q[4]=0x20;q[5]=(uint8_t)host_num(b);app_sysex(q,6);}else if(!strcmp(a,"STOP")){q[4]=0x21;app_sysex(q,5);}else if(!strcmp(a,"EXPORT")){q[4]=0x22;q[5]=(uint8_t)host_num(b);app_sysex(q,6);}else if(!strcmp(a,"LOAD")){q[4]=0x23;q[5]=(uint8_t)host_num(b);app_sysex(q,6);}else if(!strcmp(a,"SAVE")){q[4]=0x24;q[5]=(uint8_t)host_num(b);app_sysex(q,6);}else if(!strcmp(a,"CLEAR")){q[4]=0x26;q[5]=(uint8_t)host_num(b);app_sysex(q,6);}else return 0;return 1;}
-int app_expect(const char *what,int *got){if(!strcmp(what,"page"))*got=set.page;else if(!strcmp(what,"preset"))*got=set.preset;else if(!strcmp(what,"bank"))*got=set.bank;else if(!strcmp(what,"browse_preset"))*got=ui.browse_preset;else if(!strcmp(what,"browse_bank"))*got=ui.browse_bank;else if(!strcmp(what,"browse_valid"))*got=ui.browse_bank?user_valid(ui.browse_preset):1;else if(!strcmp(what,"user_valid"))*got=user_valid(set.preset);else if(!strcmp(what,"user_seeded"))*got=set.reserved[0]==USER_SEED_VERSION;else if(!strcmp(what,"user_count")){int n=0,i;for(i=0;i<(int)USER_SLOTS;i++)if(user_valid((uint8_t)i))n++;*got=n;}else if(!strcmp(what,"import"))*got=import_on;else if(!strcmp(what,"import_slot"))*got=import_slot;else if(!strcmp(what,"sync"))*got=set.p.osc_sync;else if(!strcmp(what,"trigger"))*got=set.p.trigger_mode;else if(!strcmp(what,"pwm1"))*got=set.p.osc1_pwm_source;else if(!strcmp(what,"pwm2"))*got=set.p.osc2_pwm_source;else if(!strcmp(what,"lfo_clock"))*got=set.p.lfo_clock_div;else if(!strcmp(what,"seq_running"))*got=seqrt.running;else if(!strcmp(what,"seq_step"))*got=seqrt.pos;else if(!strcmp(what,"seq_len"))*got=set.seq.steps;else if(!strcmp(what,"seq_block"))*got=set.seq.block;else if(!strcmp(what,"seq_clock"))*got=set.seq.clock_mode;else if(!strcmp(what,"seq_base_oct"))*got=set.seq.base_octave;else if(!strcmp(what,"seq_edit"))*got=ui.seq_mode>=SQ_PIANO;else if(!strcmp(what,"seq_mode"))*got=ui.seq_mode;else if(!strcmp(what,"seq_undo"))*got=seq_undo.valid;else if(!strcmp(what,"seq_mut_time"))*got=set.seq.mut_time_ops;else if(!strcmp(what,"seq_mut_note"))*got=set.seq.mut_note_ops;else if(!strcmp(what,"seq_mut_art"))*got=set.seq.mut_art_ops;else if(!strcmp(what,"seq_selected_kind"))*got=acid_seq_kind(&set.seq,ui.seq_step);else if(!strcmp(what,"seq_selected_degree"))*got=acid_seq_degree(&set.seq,ui.seq_step);else if(!strcmp(what,"seq_selected_oct"))*got=set.seq.step[ui.seq_step].octave;else if(!strcmp(what,"seq_selected_acc"))*got=acid_seq_accent(&set.seq,ui.seq_step);else if(!strcmp(what,"seq_selected_slide"))*got=acid_seq_slide(&set.seq,ui.seq_step);else if(!strcmp(what,"cutoff"))*got=(int)(set.p.cutoff_hz+0.5f);else if(!strcmp(what,"resonance"))*got=(int)(set.p.resonance*100.0f+0.5f);else if(!strcmp(what,"home"))*got=ui.home;else if(!strcmp(what,"custom"))*got=set.custom;else if(!strcmp(what,"moog"))*got=(set.bank==0&&set.preset==1&&set.p.trigger_mode==BST_TRIG_MULTI&&set.p.osc1_wave==0&&set.p.osc2_wave==1&&set.p.osc2_range==1&&set.p.filter_24db==1&&set.p.resonance>0.31f&&set.p.resonance<0.32f&&set.p.cutoff_hz>10.0f&&set.p.cutoff_hz<12.0f);else if(!strcmp(what,"moog_wheel"))*got=(set.p.wheel_pitch>4.99f&&set.p.wheel_pitch<5.01f);else if(!strcmp(what,"factory_last"))*got=(set.bank==0&&set.preset==100u);else if(!strcmp(what,"lfo_fast"))*got=set.p.lfo_rate_hz>900.0f;else if(!strcmp(what,"env20"))*got=(set.p.amp_attack>19.9f&&set.p.amp_decay>19.9f&&set.p.amp_release>19.9f);else if(!strcmp(what,"o1_lfo_cents")){float x=set.p.osc1_lfo_pitch*100.0f;*got=(int)(x+(x>=0.0f?0.5f:-0.5f));}else if(!strcmp(what,"o2_semi"))*got=(int)(set.p.osc2_semitone+0.5f);else return 0;return 1;}
+int app_expect(const char *what,int *got){if(!strcmp(what,"page"))*got=set.page;else if(!strcmp(what,"preset"))*got=set.preset;else if(!strcmp(what,"bank"))*got=set.bank;else if(!strcmp(what,"user_valid"))*got=user_valid(set.preset);else if(!strcmp(what,"user_seeded"))*got=set.reserved[0]==USER_SEED_VERSION;else if(!strcmp(what,"user_count")){int n=0,i;for(i=0;i<(int)USER_SLOTS;i++)if(user_valid((uint8_t)i))n++;*got=n;}else if(!strcmp(what,"import"))*got=import_on;else if(!strcmp(what,"import_slot"))*got=import_slot;else if(!strcmp(what,"sync"))*got=set.p.osc_sync;else if(!strcmp(what,"trigger"))*got=set.p.trigger_mode;else if(!strcmp(what,"pwm1"))*got=set.p.osc1_pwm_source;else if(!strcmp(what,"pwm2"))*got=set.p.osc2_pwm_source;else if(!strcmp(what,"lfo_clock"))*got=set.p.lfo_clock_div;else if(!strcmp(what,"seq_running"))*got=seqrt.running;else if(!strcmp(what,"seq_step"))*got=seqrt.pos;else if(!strcmp(what,"seq_len"))*got=set.seq.steps;else if(!strcmp(what,"seq_block"))*got=set.seq.block;else if(!strcmp(what,"seq_clock"))*got=set.seq.clock_mode;else if(!strcmp(what,"seq_base_oct"))*got=set.seq.base_octave;else if(!strcmp(what,"seq_edit"))*got=ui.seq_mode>=SQ_PIANO;else if(!strcmp(what,"seq_mode"))*got=ui.seq_mode;else if(!strcmp(what,"seq_undo"))*got=seq_undo.valid;else if(!strcmp(what,"seq_mut_time"))*got=set.seq.mut_time_ops;else if(!strcmp(what,"seq_mut_note"))*got=set.seq.mut_note_ops;else if(!strcmp(what,"seq_mut_art"))*got=set.seq.mut_art_ops;else if(!strcmp(what,"seq_selected_kind"))*got=acid_seq_kind(&set.seq,ui.seq_step);else if(!strcmp(what,"seq_selected_degree"))*got=acid_seq_degree(&set.seq,ui.seq_step);else if(!strcmp(what,"seq_selected_oct"))*got=set.seq.step[ui.seq_step].octave;else if(!strcmp(what,"seq_selected_acc"))*got=acid_seq_accent(&set.seq,ui.seq_step);else if(!strcmp(what,"seq_selected_slide"))*got=acid_seq_slide(&set.seq,ui.seq_step);else if(!strcmp(what,"cutoff"))*got=(int)(set.p.cutoff_hz+0.5f);else if(!strcmp(what,"resonance"))*got=(int)(set.p.resonance*100.0f+0.5f);else if(!strcmp(what,"home"))*got=ui.home;else if(!strcmp(what,"custom"))*got=set.custom;else if(!strcmp(what,"moog"))*got=(set.bank==0&&set.preset==1&&set.p.trigger_mode==BST_TRIG_MULTI&&set.p.osc1_wave==0&&set.p.osc2_wave==1&&set.p.osc2_range==1&&set.p.filter_24db==1&&set.p.resonance>0.31f&&set.p.resonance<0.32f&&set.p.cutoff_hz>10.0f&&set.p.cutoff_hz<12.0f);else if(!strcmp(what,"moog_wheel"))*got=(set.p.wheel_pitch>4.99f&&set.p.wheel_pitch<5.01f);else if(!strcmp(what,"factory_last"))*got=(set.bank==0&&set.preset==100u);else if(!strcmp(what,"lfo_fast"))*got=set.p.lfo_rate_hz>900.0f;else if(!strcmp(what,"env20"))*got=(set.p.amp_attack>19.9f&&set.p.amp_decay>19.9f&&set.p.amp_release>19.9f);else if(!strcmp(what,"o1_lfo_cents")){float x=set.p.osc1_lfo_pitch*100.0f;*got=(int)(x+(x>=0.0f?0.5f:-0.5f));}else if(!strcmp(what,"o2_semi"))*got=(int)(set.p.osc2_semitone+0.5f);else return 0;return 1;}
 #endif

@@ -1,0 +1,4 @@
+657567c3fb8f2694634a91abc212b7b3958d9da2d930f9ac399eb6dfd20f8327  FM1-BassStation-RC2.fwsc
+588f496965119bad38ea57ea8e7a99011fb398a9f141d022bfc321b51dd30e16  FM1-BassStation-RC2-Web-Editor.zip
+8038ed033a38a73e6c82045fe7afc334157898c2b67bc21faae83e76793212e8  FM1-BassStation-RC2-Project-Source.tar.xz
+5cdd7a418cc8a898a133e7ee48268c2fce3c7dad530aba62021fbc09f1e11850  recovery/FM1-BassStation-RC2-CLEAN-INSTALL-M-Flasher.bin

@@ -11,33 +11,35 @@ expect pwm2 1
 expect pwm1 1
 tap EDIT
 expect page 2
-# TEST15: SEL opens the dedicated preset browser. Browsing must not change
-# the loaded sound until SEL is pressed again.
+# SEL opens the browser. Both encoders load immediately and wrap at either end.
 tap SEL
 expect page 14
-expect browse_bank 0
-expect browse_preset 0
-turn SELECT 1 2
-expect browse_preset 1
+expect bank 0
 expect preset 0
-tap SEL
-expect page 14
+turn SELECT 1 2
 expect preset 1
 expect moog 1
-# RC1: ALGO switches browser bank; current sound remains loaded until SEL.
+turn PRESET 1 2
+expect preset 2
+tap SEL
+expect page 14
+expect preset 2
+spin PRESET -3
+expect factory_last 1
+turn PRESET 1 2
+expect preset 0
 turn ALGO 1 2
-expect browse_bank 1
-expect browse_preset 0
-expect bank 0
+expect bank 1
+expect preset 0
+turn PRESET -1 2
+expect preset 127
+expect user_valid 1
 turn ALGO -1 2
-expect browse_bank 0
+expect bank 0
+expect preset 0
 tap HOME
 expect page 0
 expect home 1
-# Restore INIT after the browser-load regression so the original bank traversal
-# checks below keep their zero-based starting point.
-turn PRESET -1 2
-expect preset 0
 # RC1: SELECT and ALGO are hard-wired filter controls outside the SEL page.
 # They must not leave HOME or change pages.
 turn SELECT 1 2

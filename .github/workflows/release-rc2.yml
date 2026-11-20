@@ -1,0 +1,32 @@
+name: Publish RC2
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/release-rc2.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish RC2
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          sha256sum -c RC2-SHA256SUMS.txt
+          assets=(
+            FM1-BassStation-RC2.fwsc
+            FM1-BassStation-RC2-Web-Editor.zip
+            FM1-BassStation-RC2-Project-Source.tar.xz
+            FM1-BassStation-RC2-Source-Validation.json
+            RC2-SHA256SUMS.txt
+            recovery/FM1-BassStation-RC2-CLEAN-INSTALL-M-Flasher.bin
+          )
+          if gh release view RC2 >/dev/null 2>&1; then
+            gh release upload RC2 "${assets[@]}" --clobber
+          else
+            gh release create RC2 "${assets[@]}" --title "FM1 Bass Station RC2" --notes-file FM1-BassStation-RC2-Release-Notes.md --target "$GITHUB_SHA" --latest
+          fi

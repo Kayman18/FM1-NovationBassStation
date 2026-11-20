@@ -1,0 +1,25 @@
+# Screen captures for the repository README.
+tap HOME
+turn PRESET 1 20
+shot home.png
+tap SEL
+turn PRESET 1 20
+shot presets.png
+tap SEQ
+shot seq-generate.png
+turn PRESET 1 20
+shot seq-key-gate.png
+turn PRESET 1 20
+shot seq-slide-clock.png
+tap SEQ
+shot seq-mutate.png
+tap SEQ
+shot seq-piano-roll.png
+tap SEQ
+shot seq-gate.png
+tap SEQ
+shot seq-octave.png
+tap SEQ
+shot seq-accent.png
+tap SEQ
+shot seq-slide.png

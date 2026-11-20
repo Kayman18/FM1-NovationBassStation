@@ -1,16 +1,34 @@
-# FM1 Bass Station RC1
+# FM1 Bass Station RC2
 
-RC1 is the main release of the FM1 Bass Station port.
+- [RC2 firmware for normal updates](FM1-BassStation-RC2.fwsc)
+- [USB-C Web MIDI editor](FM1-BassStation-RC2-Web-Editor.zip)
+- [Browsable source](source/) and [source archive](FM1-BassStation-RC2-Project-Source.tar.xz)
+- [Release notes](FM1-BassStation-RC2-Release-Notes.md) and [SHA-256 checksums](RC2-SHA256SUMS.txt)
 
-- [Download the latest release](https://github.com/Kayman18/FM1-NovationBassStation/releases/latest)
-- [Firmware](FM1-BassStation-RC1.fwsc)
-- [USB-C Web MIDI editor](FM1-BassStation-RC1-Web-Editor.zip)
-- [Browsable source](source/)
-- [Source archive](FM1-BassStation-RC1-Project-Source.tar.xz)
-- [Release notes](FM1-BassStation-RC1-Release-Notes.md)
+Press **SEL** to open Presets. Turn **PRESET** or **SELECT** to load a patch immediately, or turn **ALGO** to switch banks. Outside Presets, **SELECT** controls Cutoff and **ALGO** controls Resonance. On SEQ, **PRESET** selects the Generate panel or the step being edited.
 
-SELECT controls Filter Cutoff and ALGO controls Filter Resonance outside the SEL preset browser. Normal synth pages use four-control layouts. RC1 includes the USER bank, 303 sequencer, note-edge declicking and USB-C web editor.
+## FM-1 screens
 
-Use the FWSC file for normal updates. A generic M-Flasher image is excluded to preserve per-device USER-bank data. Build instructions and scripts are in the source package.
+These 240 × 240 captures come from the RC2 firmware simulator.
 
-Checksums: [firmware/editor](SHA256SUMS.txt), [source archive](SOURCE-SHA256SUMS.txt).
+| Home | Presets |
+| --- | --- |
+| ![Home screen with Cutoff, Resonance, Osc Mix, Volume and enlarged preset name](docs/img/home.png) | ![Preset page with the active preset and adjacent patch names](docs/img/presets.png) |
+
+| Generate · Timing | Generate · Key & Gate | Generate · Slide & Clock |
+| --- | --- | --- |
+| ![Generate timing controls](docs/img/seq-generate.png) | ![Generate key and gate controls](docs/img/seq-key-gate.png) | ![Generate slide and clock controls](docs/img/seq-slide-clock.png) |
+
+| Mutate | Piano Roll | Gate |
+| --- | --- | --- |
+| ![Mutate controls](docs/img/seq-mutate.png) | ![Sequencer piano roll](docs/img/seq-piano-roll.png) | ![Sequencer gate lanes](docs/img/seq-gate.png) |
+
+| Octave | Accent | Slide |
+| --- | --- | --- |
+| ![Sequencer octave lanes](docs/img/seq-octave.png) | ![Sequencer accent lanes](docs/img/seq-accent.png) | ![Sequencer slide lanes](docs/img/seq-slide.png) |
+
+## Firmware updates
+
+Use the FWSC file to update an existing FM-1 and preserve its USER bank. The [clean-install M-Flasher image](recovery/FM1-BassStation-RC2-CLEAN-INSTALL-M-Flasher.bin) writes the entire flash, including saved USER patches and settings. Use it for clean installation or recovery.
+
+[Build instructions](source/README-FIRST.md) cover the target firmware and host simulator.
