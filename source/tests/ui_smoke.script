@@ -1,5 +1,6 @@
 # Bass Station TEST17 host UI/MIDI smoke
 expect page 0
+expect cutoff_scaled 500
 # OSC1 fixed at 8': page is wave/PW/PWM source/pitch mod
 turn K3 1 2
 expect pwm1 1
@@ -21,6 +22,8 @@ expect preset 1
 expect moog 1
 turn PRESET 1 2
 expect preset 2
+expect cutoff_scaled 500
+expect filter_overlay 0
 tap SEL
 expect page 14
 expect preset 2
@@ -34,6 +37,8 @@ expect preset 0
 turn PRESET -1 2
 expect preset 127
 expect user_valid 1
+expect cutoff_scaled 500
+expect filter_overlay 0
 turn ALGO -1 2
 expect bank 0
 expect preset 0
@@ -45,11 +50,18 @@ expect home 1
 turn SELECT 1 2
 expect page 0
 expect home 1
-expect cutoff 1253
+expect cutoff 234
+expect filter_overlay 1
 turn ALGO 1 2
 expect page 0
 expect home 1
 expect resonance 30
+expect filter_overlay 1
+wait 1190
+expect filter_overlay 1
+wait 30
+expect filter_overlay 0
+expect home 1
 # EDIT now cycles OSC1 -> OSC2 -> OSC MOD -> MIX because SELECT no longer navigates pages.
 tap EDIT
 expect page 1
@@ -57,8 +69,18 @@ tap EDIT
 expect page 2
 tap EDIT
 expect page 3
+turn ALGO 1 2
+expect page 3
+expect filter_overlay 1
 tap FX
 expect page 4
+expect filter_overlay 0
+turn SELECT 1 2
+expect page 4
+expect filter_overlay 0
+turn ALGO 1 2
+expect page 4
+expect filter_overlay 0
 tap ENV
 expect page 5
 tap ENV
@@ -82,9 +104,14 @@ turn SELECT 1 2
 expect page 12
 turn ALGO -1 2
 expect page 12
+expect filter_overlay 1
 # TEST19: SEQ opens the expanded deterministic 303-style sequencer.
 tap SEQ
 expect page 13
+expect filter_overlay 0
+turn SELECT 1 2
+expect page 13
+expect filter_overlay 1
 expect seq_mode 0
 expect seq_len 16
 expect seq_block 0
@@ -224,6 +251,8 @@ tap EDIT
 expect page 3
 turn K2 1 2
 expect sync 1
+turn SELECT 2 2
+expect cutoff_scaled >500
 tap SAVE
 expect user_valid 1
 expect custom 0
@@ -234,6 +263,7 @@ turn PRESET -1 2
 expect preset 0
 expect user_valid 1
 expect sync 1
+expect cutoff_scaled 500
 # SAVE also persists selected user bank/slot across reboot.
 reboot
 wait 100
@@ -241,6 +271,7 @@ expect bank 1
 expect preset 0
 expect user_valid 1
 expect sync 1
+expect cutoff_scaled >500
 # Return to factory/INIT. Moog has sync off; toggle it on and capture the exact Rack frame into user slot 11.
 tap REC
 expect bank 0

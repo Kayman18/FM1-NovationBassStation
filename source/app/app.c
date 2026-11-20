@@ -21,6 +21,12 @@
 #define BUILTIN_SLOTS 101u /* INIT + 100 recovered factory programs */
 #define BANK_CHUNK_SLOTS 20u
 #define BANK_NAME_LEN 20u
+#define CUTOFF_MIN_HZ 5.0f
+#define CUTOFF_MAX_HZ 10000.0f
+/* Geometric midpoint of the encoder and Web MIDI editor's cutoff range. */
+#define CUTOFF_MID_HZ 223.6068f
+#define FILTER_OVERLAY_MS 1200u
+#define CUTOFF_SETTINGS_VERSION 1u
 #define USER_SEED_VERSION 0x21u /* TEST21: seed empty USER slots once */
 
 typedef struct {
@@ -90,6 +96,7 @@ static struct {
     uint8_t home;                 /* TEST18: SH-101-style performance home overlay */
     char msg[2][24];
     uint32_t msg_until;
+    uint32_t filter_overlay_until;
 } ui;
 
 typedef struct {
@@ -116,7 +123,7 @@ static void pct_text(float v,char *b){int_text((int32_t)(v*100.0f+(v>=0?0.5f:-0.
 static void f1_text(float v,char *b){int32_t q=(int32_t)(v*10.0f+(v>=0?0.5f:-0.5f));char t[16];int_text(q/10,b);text_cat(b,".");{int32_t r=q%10;if(r<0)r=-r;int_text(r,t);}text_cat(b,t);}
 static void cents_text(float st,char *b){int_text((int32_t)(st*100.0f+(st>=0?0.5f:-0.5f)),b);text_cat(b,"c");}
 
-void app_say(const char *a,const char *b){uint32_t i;for(i=0;i<23u&&a&&a[i];i++)ui.msg[0][i]=a[i];ui.msg[0][i]=0;for(i=0;i<23u&&b&&b[i];i++)ui.msg[1][i]=b[i];ui.msg[1][i]=0;ui.msg_until=plat_ms()+1100u;ui.redraw=1;}
+void app_say(const char *a,const char *b){uint32_t i;for(i=0;i<23u&&a&&a[i];i++)ui.msg[0][i]=a[i];ui.msg[0][i]=0;for(i=0;i<23u&&b&&b[i];i++)ui.msg[1][i]=b[i];ui.msg[1][i]=0;ui.msg_until=plat_ms()+1100u;ui.filter_overlay_until=0;ui.redraw=1;}
 static void apply_params(void){synth.p=set.p;}
 static void defaults(void){uint8_t *q=(uint8_t*)&set;uint32_t i;for(i=0;i<(uint32_t)sizeof set;i++)q[i]=0;set.magic=SET_MAGIC;set.octave=0;set.page=PG_OSC1;set.bank=0;bassstation_defaults(&synth);set.p=synth.p;acid_seq_defaults(&set.seq);}
 
@@ -177,6 +184,19 @@ static float plug_lfo_rate(int v){return v<=0?0.0f:plug_exp(v,0.0055f,1000.0f);}
 static float plug_lfo_delay(int v){return v<=0?0.0f:plug_exp(v,0.005f,5.0f);}
 static float plug_glide(int v){return v<=0?0.0f:plug_exp(v,0.005f,5.0f);}
 
+static void preset_loaded(uint8_t bank,uint8_t slot){
+    /* Set the live starting cutoff without rewriting the preset record. */
+    synth.p.cutoff_hz=CUTOFF_MID_HZ;
+    set.p=synth.p;
+    set.bank=bank;
+    set.preset=slot;
+    set.custom=0;
+    dirty=0;
+    ui.filter_overlay_until=0;
+    ui.redraw=1;
+    bw_send_synth();
+}
+
 static void builtin_load(int idx){
     bassstation_all_notes_off(&synth);
     bassstation_defaults(&synth);
@@ -184,10 +204,18 @@ static void builtin_load(int idx){
         /* Built-in 1..100 = original plug-in factory programs 00..99. */
         bassstation_plugin_factory_decode(&synth.p,bst_factory_record[idx-1]);
     }
-    set.p=synth.p;set.bank=0;set.preset=(uint8_t)idx;set.custom=0;dirty=0;ui.redraw=1;bw_send_synth();
+    preset_loaded(0,(uint8_t)idx);
 }
 
-static int user_load(uint8_t slot){uint8_t chunk=(uint8_t)(slot/BANK_CHUNK_SLOTS),i=(uint8_t)(slot%BANK_CHUNK_SLOTS);int ok=user_valid(slot);bassstation_all_notes_off(&synth);bassstation_defaults(&synth);if(ok&&bank_chunk_load(chunk))synth.p=bank_cache.patch[i];set.p=synth.p;set.bank=1;set.preset=slot;set.custom=0;dirty=0;ui.redraw=1;bw_send_synth();return ok;}
+static int user_load(uint8_t slot){
+    uint8_t index=(uint8_t)(slot%BANK_CHUNK_SLOTS);
+    int valid=user_valid(slot);
+    bassstation_all_notes_off(&synth);
+    bassstation_defaults(&synth);
+    if(valid)synth.p=bank_cache.patch[index];
+    preset_loaded(1,slot);
+    return valid;
+}
 static void preset_select(int idx){if(set.bank){if(idx<0)idx=(int)USER_SLOTS-1;if(idx>=(int)USER_SLOTS)idx=0;user_load((uint8_t)idx);}else{if(idx<0)idx=(int)BUILTIN_SLOTS-1;if(idx>=(int)BUILTIN_SLOTS)idx=0;builtin_load(idx);}}
 static void bank_select(uint8_t bank){int p=(int)set.preset;if(bank){set.bank=1;if(p>=(int)USER_SLOTS)p=0;user_load((uint8_t)p);app_say("PRESET BANK","USER / COMMUNITY");}else{set.bank=0;if(p>=(int)BUILTIN_SLOTS)p=0;builtin_load(p);app_say("PRESET BANK","FACTORY / INIT");}}
 
@@ -216,6 +244,11 @@ void app_init(void){bw_connected=0;
     }
     if(set.seq.version!=ACID_SEQ_VERSION)acid_seq_defaults(&set.seq);else acid_seq_normalize(&set.seq);
     if(set.octave<-2||set.octave>2||set.page>=PG_COUNT||set.bank>1u||(set.bank?set.preset>=USER_SLOTS:set.preset>=BUILTIN_SLOTS))defaults();
+    if(set.reserved[1]!=CUTOFF_SETTINGS_VERSION){
+        /* Upgrade the active sound once, then let SAVE resume live edits on boot. */
+        set.p.cutoff_hz=CUTOFF_MID_HZ;
+        set.reserved[1]=CUTOFF_SETTINGS_VERSION;
+    }
     bank_cache_idx=0xffu;
     (void)user_seed_empty_slots();
     apply_params();dirty=0;seq_dirty=0;import_on=0;import_slot=0;mem_zero(&seqrt,sizeof seqrt);seqrt.current_note=-1;mem_zero(&seq_undo,sizeof seq_undo);ui.seq_panel=0;ui.seq_mode=SQ_GEN;ui.seq_step=0;ui.home=0;
@@ -355,7 +388,7 @@ static float bw_unlog0(unsigned v,float lo,float hi){if(!v)return 0.0f;if(v>1000
 static unsigned bw_param_get(unsigned id){bassstation_params_t *p=&set.p;switch(id){
  case 0:return p->osc1_wave;case 1:return p->osc2_wave;case 2:return p->osc2_range;case 3:return p->osc_sync;case 4:return p->osc1_pwm_source;case 5:return p->osc2_pwm_source;case 6:return p->filter_24db;case 7:return p->lfo_shape;case 8:return p->trigger_mode;case 9:return p->lfo_clock_div;
  case 10:return bw_lin(p->osc1_pw,0,1);case 11:return bw_lin(p->osc2_pw,0,1);case 12:return bw_lin(p->osc2_semitone,0,12);case 13:return bw_lin(p->osc2_detune,-0.96f,0.96f);case 14:return bw_lin(p->osc1_lfo_pitch,-12,12);case 15:return bw_lin(p->osc2_lfo_pitch,-12,12);case 16:return bw_lin(p->osc1_env_pitch,-24,24);case 17:return bw_lin(p->osc2_env_pitch,-24,24);case 18:return bw_lin(p->osc_mix,0,1);
- case 19:return bw_log(p->cutoff_hz,5,10000);case 20:return bw_lin(p->resonance,0,1);case 21:return bw_lin(p->filter_env_mod,-8,8);case 22:return bw_lin(p->filter_lfo_mod,-8,8);case 23:return bw_lin(p->filter_keytrack,0,1);
+ case 19:return bw_log(p->cutoff_hz,CUTOFF_MIN_HZ,CUTOFF_MAX_HZ);case 20:return bw_lin(p->resonance,0,1);case 21:return bw_lin(p->filter_env_mod,-8,8);case 22:return bw_lin(p->filter_lfo_mod,-8,8);case 23:return bw_lin(p->filter_keytrack,0,1);
  case 24:return bw_log0(p->amp_attack,0.0005f,20);case 25:return bw_log0(p->amp_decay,0.003f,20);case 26:return bw_lin(p->amp_sustain,0,1);case 27:return bw_log0(p->amp_release,0.003f,20);case 28:return bw_lin(p->amp_velocity,0,1);
  case 29:return bw_log0(p->mod_attack,0.0005f,20);case 30:return bw_log0(p->mod_decay,0.003f,20);case 31:return bw_lin(p->mod_sustain,0,1);case 32:return bw_log0(p->mod_release,0.003f,20);case 33:return bw_lin(p->mod_velocity,0,1);
  case 34:return bw_log0(p->lfo_rate_hz,0.0055f,1000);case 35:return bw_log0(p->lfo_delay_s,0.005f,5);case 36:return bw_log0(p->glide_s,0.005f,5);case 37:return bw_lin(p->master_tune,-0.5f,0.5f);case 38:return bw_lin(p->bend_range,0,12);case 39:return bw_lin(p->wheel_pitch,0,15);case 40:return bw_lin(p->wheel_filter,0,6);
@@ -363,13 +396,13 @@ static unsigned bw_param_get(unsigned id){bassstation_params_t *p=&set.p;switch(
 static int bw_param_set(unsigned id,unsigned v){bassstation_params_t *p=&set.p;switch(id){
  case 0:p->osc1_wave=(uint8_t)(v>1?1:v);break;case 1:p->osc2_wave=(uint8_t)(v>1?1:v);break;case 2:p->osc2_range=(uint8_t)(v>3?3:v);break;case 3:p->osc_sync=(uint8_t)(v?1:0);break;case 4:p->osc1_pwm_source=(uint8_t)(v>2?2:v);break;case 5:p->osc2_pwm_source=(uint8_t)(v>2?2:v);break;case 6:p->filter_24db=(uint8_t)(v?1:0);break;case 7:p->lfo_shape=(uint8_t)(v>2?2:v);break;case 8:p->trigger_mode=(uint8_t)(v>2?2:v);break;case 9:p->lfo_clock_div=(uint8_t)(v>16?16:v);break;
  case 10:p->osc1_pw=bw_unlin(v,0,1);break;case 11:p->osc2_pw=bw_unlin(v,0,1);break;case 12:p->osc2_semitone=bw_unlin(v,0,12);break;case 13:p->osc2_detune=bw_unlin(v,-0.96f,0.96f);break;case 14:p->osc1_lfo_pitch=bw_unlin(v,-12,12);break;case 15:p->osc2_lfo_pitch=bw_unlin(v,-12,12);break;case 16:p->osc1_env_pitch=bw_unlin(v,-24,24);break;case 17:p->osc2_env_pitch=bw_unlin(v,-24,24);break;case 18:p->osc_mix=bw_unlin(v,0,1);break;
- case 19:p->cutoff_hz=bw_unlog(v,5,10000);break;case 20:p->resonance=bw_unlin(v,0,1);break;case 21:p->filter_env_mod=bw_unlin(v,-8,8);break;case 22:p->filter_lfo_mod=bw_unlin(v,-8,8);break;case 23:p->filter_keytrack=bw_unlin(v,0,1);break;
+ case 19:p->cutoff_hz=bw_unlog(v,CUTOFF_MIN_HZ,CUTOFF_MAX_HZ);break;case 20:p->resonance=bw_unlin(v,0,1);break;case 21:p->filter_env_mod=bw_unlin(v,-8,8);break;case 22:p->filter_lfo_mod=bw_unlin(v,-8,8);break;case 23:p->filter_keytrack=bw_unlin(v,0,1);break;
  case 24:p->amp_attack=bw_unlog0(v,0.0005f,20);break;case 25:p->amp_decay=bw_unlog0(v,0.003f,20);break;case 26:p->amp_sustain=bw_unlin(v,0,1);break;case 27:p->amp_release=bw_unlog0(v,0.003f,20);break;case 28:p->amp_velocity=bw_unlin(v,0,1);break;
  case 29:p->mod_attack=bw_unlog0(v,0.0005f,20);break;case 30:p->mod_decay=bw_unlog0(v,0.003f,20);break;case 31:p->mod_sustain=bw_unlin(v,0,1);break;case 32:p->mod_release=bw_unlog0(v,0.003f,20);break;case 33:p->mod_velocity=bw_unlin(v,0,1);break;
  case 34:p->lfo_rate_hz=bw_unlog0(v,0.0055f,1000);break;case 35:p->lfo_delay_s=bw_unlog0(v,0.005f,5);break;case 36:p->glide_s=bw_unlog0(v,0.005f,5);break;case 37:p->master_tune=bw_unlin(v,-0.5f,0.5f);break;case 38:p->bend_range=bw_unlin(v,0,12);break;case 39:p->wheel_pitch=bw_unlin(v,0,15);break;case 40:p->wheel_filter=bw_unlin(v,0,6);break;
  case 41:p->aftertouch_pitch=bw_unlin(v,-7,7);break;case 42:p->aftertouch_filter=bw_unlin(v,-7,7);break;case 43:p->aftertouch_bias=bw_unlin(v,0,15);break;case 44:p->breath_pitch=bw_unlin(v,-7,7);break;case 45:p->breath_filter=bw_unlin(v,-7,7);break;case 46:p->breath_bias=bw_unlin(v,0,15);break;case 47:p->volume=bw_unlin(v,0,1.25f);break;default:return 0;}
  synth.p=*p;set.custom=1;dirty=1;ui.redraw=1;return 1;}
-static void bw_send_hello(void){unsigned n=bw_begin(BW_R_HELLO);bw_tx[n++]=101;n+=bw_put_u14(bw_tx+n,BW_PARAM_COUNT);n+=bw_put_u14(bw_tx+n,BUILTIN_SLOTS);n+=bw_put_u14(bw_tx+n,USER_SLOTS);bw_tx[n++]=0x1f;bw_finish(n);}
+static void bw_send_hello(void){unsigned n=bw_begin(BW_R_HELLO);bw_tx[n++]=102;n+=bw_put_u14(bw_tx+n,BW_PARAM_COUNT);n+=bw_put_u14(bw_tx+n,BUILTIN_SLOTS);n+=bw_put_u14(bw_tx+n,USER_SLOTS);bw_tx[n++]=0x1f;bw_finish(n);}
 static void bw_send_synth(void){unsigned id,n;if(!bw_connected)return;n=bw_begin(BW_R_SYNTH);bw_tx[n++]=set.bank;n+=bw_put_u14(bw_tx+n,set.preset);bw_tx[n++]=set.custom?1u:0u;bw_tx[n++]=(uint8_t)(set.octave+2);for(id=0;id<BW_PARAM_COUNT;id++)n+=bw_put_u14(bw_tx+n,bw_param_get(id));bw_finish(n);}
 static void bw_send_seq(void){unsigned n,i;if(!bw_connected)return;n=bw_begin(BW_R_SEQ);n+=bw_put_u14(bw_tx+n,set.seq.bpm);bw_tx[n++]=set.seq.steps;bw_tx[n++]=set.seq.note_density;bw_tx[n++]=set.seq.range;bw_tx[n++]=set.seq.root;bw_tx[n++]=set.seq.scale;bw_tx[n++]=set.seq.gate;bw_tx[n++]=set.seq.accent_density;bw_tx[n++]=set.seq.slide_density;bw_tx[n++]=set.seq.base_octave;bw_tx[n++]=set.seq.slide_time;bw_tx[n++]=set.seq.clock_mode;bw_tx[n++]=set.seq.block;bw_tx[n++]=set.seq.mut_time_ops;bw_tx[n++]=set.seq.mut_note_ops;bw_tx[n++]=set.seq.mut_art_ops;bw_tx[n++]=seqrt.running;bw_tx[n++]=seqrt.pos;for(i=0;i<ACID_SEQ_NSTEP;i++){uint8_t c=set.seq.step[i].code;bw_tx[n++]=(uint8_t)((c&0x7fu));bw_tx[n++]=(uint8_t)(((uint8_t)(set.seq.step[i].octave+2)&7u)|((c&0x80u)?8u:0u));}bw_finish(n);}
 static int bw_seq_ctrl_set(unsigned id,unsigned v){uint8_t old=set.seq.clock_mode;switch(id){case 0:set.seq.bpm=(uint16_t)stepi((int)v,0,30,300);break;case 1:set.seq.steps=(uint8_t)stepi((int)v,0,1,64);break;case 2:set.seq.note_density=(uint8_t)stepi((int)v,0,5,100);break;case 3:set.seq.range=(uint8_t)stepi((int)v,0,0,100);break;case 4:set.seq.root=(uint8_t)(v%12u);break;case 5:set.seq.scale=(uint8_t)(v%8u);break;case 6:set.seq.gate=(uint8_t)stepi((int)v,0,5,100);break;case 7:set.seq.accent_density=(uint8_t)stepi((int)v,0,0,100);break;case 8:set.seq.slide_density=(uint8_t)stepi((int)v,0,0,100);break;case 9:set.seq.base_octave=(uint8_t)stepi((int)v,0,1,5);break;case 10:set.seq.slide_time=(uint8_t)stepi((int)v,0,5,100);break;case 11:set.seq.clock_mode=(uint8_t)(v?1:0);break;case 12:set.seq.block=(uint8_t)(v?1:0);break;case 13:set.seq.mut_time_ops=(uint8_t)stepi((int)v,0,1,8);break;case 14:set.seq.mut_note_ops=(uint8_t)stepi((int)v,0,1,8);break;case 15:set.seq.mut_art_ops=(uint8_t)stepi((int)v,0,1,8);break;default:return 0;}if(old!=set.seq.clock_mode)seq_set_running(0);seq_mark_changed();return 1;}
@@ -439,7 +472,11 @@ static void hard_filter_enc(int resonance,int d){
     bassstation_params_t *p=&set.p;
     if(!d)return;
     if(resonance)p->resonance=stepf(p->resonance,d*0.02f,0.0f,1.0f);
-    else p->cutoff_hz=stepmul(p->cutoff_hz,d,5.0f,10000.0f,16.0f);
+    else p->cutoff_hz=stepmul(p->cutoff_hz,d,CUTOFF_MIN_HZ,CUTOFF_MAX_HZ,16.0f);
+    if(set.page!=PG_FILTER){
+        ui.msg_until=0;
+        ui.filter_overlay_until=plat_ms()+FILTER_OVERLAY_MS;
+    }
     synth.p=*p;set.custom=1;dirty=1;ui.redraw=1;bw_send_synth();
 }
 static uint8_t seq_step_move(uint8_t p,int d){int n=set.seq.steps?set.seq.steps:1u;int q=(int)p+d;while(q<0)q+=n;while(q>=n)q-=n;return (uint8_t)q;}
@@ -450,7 +487,7 @@ static void knob(int k,int d){
     bassstation_params_t *p=&set.p;int page=set.page;
     if(ui.home){
         /* Four large performance controls on HOME; no hidden page edits. */
-        if(k==0)p->cutoff_hz=stepmul(p->cutoff_hz,d,5,10000,16.0f);
+        if(k==0)p->cutoff_hz=stepmul(p->cutoff_hz,d,CUTOFF_MIN_HZ,CUTOFF_MAX_HZ,16.0f);
         else if(k==1)p->resonance=stepf(p->resonance,d*0.02f,0,1);
         else if(k==2)p->osc_mix=stepf(p->osc_mix,d*0.02f,0,1);
         else if(k==3)p->volume=stepf(p->volume,d*0.02f,0,1.25f);
@@ -515,7 +552,7 @@ static void knob(int k,int d){
     else if(page==PG_OSC2){if(k==0)p->osc2_range=(uint8_t)stepi(p->osc2_range,d,0,3);if(k==1)p->osc2_wave=(uint8_t)stepi(p->osc2_wave,d,0,1);if(k==2)p->osc2_pw=stepf(p->osc2_pw,d*0.02f,0,1);if(k==3)p->osc2_semitone=stepf(p->osc2_semitone,d,0,12);}
     else if(page==PG_OSCMOD){if(k==0)p->osc1_env_pitch=stepf(p->osc1_env_pitch,d*0.2f,-24,24);if(k==1)p->osc2_env_pitch=stepf(p->osc2_env_pitch,d*0.2f,-24,24);if(k==2)p->osc2_lfo_pitch=stepf(p->osc2_lfo_pitch,d*0.1f,-12,12);if(k==3)p->osc2_detune=stepf(p->osc2_detune,d*0.01f,-0.96f,0.96f);}
     else if(page==PG_MIX){if(k==0)p->osc_mix=stepf(p->osc_mix,d*0.02f,0,1);if(k==1)p->osc_sync=(uint8_t)stepi(p->osc_sync,d,0,1);if(k==2)p->volume=stepf(p->volume,d*0.02f,0,1.25f);}
-    else if(page==PG_FILTER){if(k==0)p->cutoff_hz=stepmul(p->cutoff_hz,d,5,10000,16.0f);if(k==1)p->resonance=stepf(p->resonance,d*0.02f,0,1);if(k==2)p->filter_env_mod=stepf(p->filter_env_mod,d*0.10f,-8,8);if(k==3)p->filter_lfo_mod=stepf(p->filter_lfo_mod,d*0.10f,-8,8);}
+    else if(page==PG_FILTER){if(k==0)p->cutoff_hz=stepmul(p->cutoff_hz,d,CUTOFF_MIN_HZ,CUTOFF_MAX_HZ,16.0f);if(k==1)p->resonance=stepf(p->resonance,d*0.02f,0,1);if(k==2)p->filter_env_mod=stepf(p->filter_env_mod,d*0.10f,-8,8);if(k==3)p->filter_lfo_mod=stepf(p->filter_lfo_mod,d*0.10f,-8,8);}
     else if(page==PG_AMPENV){if(k==0)p->amp_attack=stepmul(p->amp_attack,d,0.0005f,20,8.0f);if(k==1)p->amp_decay=stepmul(p->amp_decay,d,0.003f,20,8.0f);if(k==2)p->amp_sustain=stepf(p->amp_sustain,d*0.02f,0,1);if(k==3)p->amp_release=stepmul(p->amp_release,d,0.003f,20,8.0f);}
     else if(page==PG_MODENV){if(k==0)p->mod_attack=stepmul(p->mod_attack,d,0.0005f,20,8.0f);if(k==1)p->mod_decay=stepmul(p->mod_decay,d,0.003f,20,8.0f);if(k==2)p->mod_sustain=stepf(p->mod_sustain,d*0.02f,0,1);if(k==3)p->mod_release=stepmul(p->mod_release,d,0.003f,20,8.0f);}
     else if(page==PG_TRIGGER){if(k==0)p->trigger_mode=(uint8_t)stepi(p->trigger_mode,d,0,2);if(k==1){if(p->glide_s<0.001f&&d>0)p->glide_s=0.005f;else p->glide_s=stepmul(p->glide_s,d,0.005f,5,8.0f);if(d<0&&p->glide_s<=0.0051f)p->glide_s=0.0f;}if(k==2)p->amp_velocity=stepf(p->amp_velocity,d*0.02f,0,1);if(k==3)p->mod_velocity=stepf(p->mod_velocity,d*0.02f,0,1);}
@@ -545,7 +582,8 @@ static void seq_button_action(uint32_t k){
     else if(k==B_FX)seq_undo_action();
 }
 static void input(void){
-    uint32_t keys,btn=plat_buttons(),k;int e;touch_poll();keys=touch_keys();
+    uint32_t keys,btn=plat_buttons(),k;int e;
+    uint8_t old_page=set.page,old_home=ui.home;touch_poll();keys=touch_keys();
     for(k=0;k<NKEYS;k++){uint32_t bit=1u<<k;int note=53+(int)k+12*set.octave;if((keys&bit)&&!(ui.keys&bit)){int v=(int)touch_vel(k);ui.vel[k]=(uint8_t)v;note_on(note,v);plat_midi_send(0x09u|0x90u<<8|(uint32_t)note<<16|(uint32_t)v<<24,TO_USB);}else if(!(keys&bit)&&(ui.keys&bit)){note_off(note);plat_midi_send(0x08u|0x80u<<8|(uint32_t)note<<16,TO_USB);}}
     for(k=0;k<NB;k++){uint32_t bit=1u<<k;if(!(btn&bit)||(ui.btn&bit))continue;
         if(k!=B_HOME&&k!=B_OCTDN&&k!=B_OCTUP&&k!=B_SAVE)ui.home=0;
@@ -577,6 +615,7 @@ static void input(void){
         else if(k==B_REC){if(set.page==PG_PRESETS)browser_bank_toggle();else bank_select(set.bank?0u:1u);}
         else if(k==B_SAVE){int ok=1;set.p=synth.p;if(set.bank)ok=user_store(set.preset,&set.p,0,0);if(ok&&plat_store_save(OBJ_SETTINGS,&set,sizeof set)==0){dirty=0;seq_dirty=0;set.custom=0;app_say(set.bank?"USER PATCH":"SETTINGS","SAVED");bw_send_synth();bw_send_seq();}else app_say("SAVE","FAILED");}
     }
+    if(old_page!=set.page||old_home!=ui.home)ui.filter_overlay_until=0;
     if((e=plat_enc(EN_SELECT))!=0){
         if(set.page==PG_PRESETS)preset_select(preset_offset(e));
         else hard_filter_enc(0,e);
@@ -598,12 +637,21 @@ static void input(void){
 }
 void app_input_only(void){input();}
 
+static void cutoff_text(char *b){
+    char hz[12];
+    int_text((int32_t)((bw_param_get(19)+5u)/10u),b);
+    text_cat(b,"%  ");
+    int_text((int32_t)(set.p.cutoff_hz+0.5f),hz);
+    text_cat(b,hz);
+    text_cat(b," Hz");
+}
+
 static void val_text(int page,int k,char *b){bassstation_params_t *p=&set.p;b[0]=0;
     if(page==PG_OSC1){if(k==0)text_cat(b,WAVE[p->osc1_wave]);if(k==1)pct_text(p->osc1_pw,b);if(k==2)text_cat(b,PWM_SRC[p->osc1_pwm_source]);if(k==3)f1_text(p->osc1_lfo_pitch,b);}
     else if(page==PG_OSC2){if(k==0)text_cat(b,RANGE[p->osc2_range]);if(k==1)text_cat(b,WAVE[p->osc2_wave]);if(k==2)pct_text(p->osc2_pw,b);if(k==3)f1_text(p->osc2_semitone,b);}
     else if(page==PG_OSCMOD){if(k==0)f1_text(p->osc1_env_pitch,b);if(k==1)f1_text(p->osc2_env_pitch,b);if(k==2)f1_text(p->osc2_lfo_pitch,b);if(k==3)cents_text(p->osc2_detune,b);}
     else if(page==PG_MIX){if(k==0)pct_text(p->osc_mix,b);if(k==1)text_cat(b,p->osc_sync?"ON":"OFF");if(k==2)pct_text(p->volume,b);if(k==3)text_cat(b,"-");}
-    else if(page==PG_FILTER){if(k==0){int_text((int)p->cutoff_hz,b);text_cat(b,"Hz");}if(k==1)pct_text(p->resonance,b);if(k==2)f1_text(p->filter_env_mod,b);if(k==3)f1_text(p->filter_lfo_mod,b);}
+    else if(page==PG_FILTER){if(k==0)cutoff_text(b);if(k==1)pct_text(p->resonance,b);if(k==2)f1_text(p->filter_env_mod,b);if(k==3)f1_text(p->filter_lfo_mod,b);}
     else if(page==PG_AMPENV){if(k==0)f1_text(p->amp_attack,b);if(k==1)f1_text(p->amp_decay,b);if(k==2)pct_text(p->amp_sustain,b);if(k==3)f1_text(p->amp_release,b);}
     else if(page==PG_MODENV){if(k==0)f1_text(p->mod_attack,b);if(k==1)f1_text(p->mod_decay,b);if(k==2)pct_text(p->mod_sustain,b);if(k==3)f1_text(p->mod_release,b);}
     else if(page==PG_TRIGGER){if(k==0)text_cat(b,TRIGGER[p->trigger_mode]);if(k==1)f1_text(p->glide_s,b);if(k==2)pct_text(p->amp_velocity,b);if(k==3)pct_text(p->mod_velocity,b);}
@@ -642,6 +690,15 @@ static void ui_fit_text(int x,int y,int w,const char *t,uint16_t c){
     if(text_w(f,t)>w)f=&FONT_XS;
     cv_text(x,y,f,t,c);
 }
+static void draw_filter_overlay(void){
+    char cutoff[32]="CUTOFF ",resonance[24]="RESONANCE ";
+    cutoff_text(cutoff+7);
+    pct_text(set.p.resonance,resonance+10);
+    cv_rect(6,47,228,16,ui_panel2());
+    cv_rect(6,47,2,16,ui_cyan());
+    cv_text(12,48,&FONT_XS,cutoff,ui_cyan());
+    cv_text(228-text_w(&FONT_XS,resonance),48,&FONT_XS,resonance,ui_white());
+}
 static void ui_header(const char *title,const char *sub){
     uint16_t cyan=ui_cyan(),white=ui_white(),dim=ui_dim();
     cv_rect(0,0,240,25,ui_panel2());
@@ -653,7 +710,8 @@ static void ui_header(const char *title,const char *sub){
         cv_text(8,48,&FONT_XS,ui.msg[1],cyan);
     }else{
         ui_fit_text(8,32,190,title,white);
-        if(sub&&*sub)cv_text(8,48,&FONT_XS,sub,dim);
+        if(ui.filter_overlay_until)draw_filter_overlay();
+        else if(sub&&*sub)cv_text(8,48,&FONT_XS,sub,dim);
         if(set.custom)cv_text(233-text_w(&FONT_XS,"EDIT"),33,&FONT_XS,"EDIT",cyan);
     }
 }
@@ -698,7 +756,7 @@ static void draw_preset_name(int y){
 }
 static void home_value_text(int k,char *b){
     bassstation_params_t *p=&set.p;b[0]=0;
-    if(k==0){int_text((int32_t)p->cutoff_hz,b);text_cat(b," Hz");}
+    if(k==0)cutoff_text(b);
     else if(k==1)pct_text(p->resonance,b);
     else if(k==2)pct_text(p->osc_mix,b);
     else pct_text(p->volume,b);
@@ -916,16 +974,27 @@ void app_splash(void){
             uint32_t gp=(band*120u+y)*240u+x;uint8_t z=BST_SPLASH_4BPP[gp>>1];uint8_t pi=(gp&1u)?(z&15u):(z>>4);
             p=y*240u+x;cv_px[p]=swap16(BST_SPLASH_PAL[pi]);
         }
-        if(band==1u)cv_text(202,101,&FONT_XS,"RC2",RGB(69,194,224));
+        if(band==1u)cv_text(202,101,&FONT_XS,"RC3",RGB(69,194,224));
         cv_blit(0,band*120u);
     }
 }
 
-void app_ui_init(void){touch_on(1);lcd_fill(0,0,240,240,C_BLACK);ui.home=0;ui.redraw=1;}
-void app_frame(void){input();if(seqrt.redraw_pending){seqrt.redraw_pending=0;ui.redraw=1;}if(ui.msg_until&&plat_ms()>=ui.msg_until){ui.msg_until=0;ui.redraw=1;}if(ui.redraw){ui.redraw=0;draw();}}
+void app_ui_init(void){touch_on(1);lcd_fill(0,0,240,240,C_BLACK);ui.home=0;ui.filter_overlay_until=0;ui.redraw=1;}
+void app_frame(void){
+    uint32_t now;
+    input();
+    now=plat_ms();
+    if(seqrt.redraw_pending){seqrt.redraw_pending=0;ui.redraw=1;}
+    if(ui.msg_until&&now>=ui.msg_until){ui.msg_until=0;ui.redraw=1;}
+    if(ui.filter_overlay_until&&(int32_t)(now-ui.filter_overlay_until)>=0){
+        ui.filter_overlay_until=0;
+        ui.redraw=1;
+    }
+    if(ui.redraw){ui.redraw=0;draw();}
+}
 #ifdef PLAT_HOST
 static int host_num(const char *s){int v=0,neg=0;if(!s)return 0;if(*s=='-'){neg=1;s++;}while(*s>='0'&&*s<='9'){v=v*10+(*s-'0');s++;}return neg?-v:v;}
-void app_host_reboot(void){bw_connected=0;bank_cache_idx=0xffu;import_on=0;import_slot=0;dirty=0;seq_dirty=0;ui.keys=ui.btn=0;ui.msg_until=0;ui.home=0;mem_zero(&seqrt,sizeof seqrt);seqrt.current_note=-1;mem_zero(&seq_undo,sizeof seq_undo);}
+void app_host_reboot(void){bw_connected=0;bank_cache_idx=0xffu;import_on=0;import_slot=0;dirty=0;seq_dirty=0;ui.keys=ui.btn=0;ui.msg_until=0;ui.filter_overlay_until=0;ui.home=0;mem_zero(&seqrt,sizeof seqrt);seqrt.current_note=-1;mem_zero(&seq_undo,sizeof seq_undo);}
 int app_host_cmd(const char *cmd,const char *a,const char *b,const char *c,const char *d){uint8_t q[80],f[76];if(!strcmp(cmd,"rackrx")){if(bassstation_rack_sysex_encode(&set.p,f)==76u)app_sysex(f+1,74u);return 1;}if(!strcmp(cmd,"pluginrx")){int slot=host_num(a),src=host_num(b),i;if(slot<0||slot>=(int)USER_SLOTS||src<0||src>=100)return 1;q[0]=0x7d;q[1]='B';q[2]='S';q[3]=8;q[4]=0x30;q[5]=(uint8_t)slot;for(i=0;i<34;i++){q[6+i*2]=(uint8_t)(bst_factory_record[src][i]>>4);q[7+i*2]=(uint8_t)(bst_factory_record[src][i]&15u);}app_sysex(q,74);return 1;}if(!strcmp(cmd,"bwctl")){
         q[0]=0x7d;q[1]='B';q[2]='W';q[3]=BW_PROTO;
         if(!strcmp(a,"HELLO")){q[4]=BW_HELLO;app_sysex(q,5);}
@@ -941,5 +1010,5 @@ int app_host_cmd(const char *cmd,const char *a,const char *b,const char *c,const
     }
     if(strcmp(cmd,"bsctl"))return 0;
     q[0]=0x7d;q[1]='B';q[2]='S';q[3]=7;if(!strcmp(a,"START")){q[4]=0x20;q[5]=(uint8_t)host_num(b);app_sysex(q,6);}else if(!strcmp(a,"STOP")){q[4]=0x21;app_sysex(q,5);}else if(!strcmp(a,"EXPORT")){q[4]=0x22;q[5]=(uint8_t)host_num(b);app_sysex(q,6);}else if(!strcmp(a,"LOAD")){q[4]=0x23;q[5]=(uint8_t)host_num(b);app_sysex(q,6);}else if(!strcmp(a,"SAVE")){q[4]=0x24;q[5]=(uint8_t)host_num(b);app_sysex(q,6);}else if(!strcmp(a,"CLEAR")){q[4]=0x26;q[5]=(uint8_t)host_num(b);app_sysex(q,6);}else return 0;return 1;}
-int app_expect(const char *what,int *got){if(!strcmp(what,"page"))*got=set.page;else if(!strcmp(what,"preset"))*got=set.preset;else if(!strcmp(what,"bank"))*got=set.bank;else if(!strcmp(what,"user_valid"))*got=user_valid(set.preset);else if(!strcmp(what,"user_seeded"))*got=set.reserved[0]==USER_SEED_VERSION;else if(!strcmp(what,"user_count")){int n=0,i;for(i=0;i<(int)USER_SLOTS;i++)if(user_valid((uint8_t)i))n++;*got=n;}else if(!strcmp(what,"import"))*got=import_on;else if(!strcmp(what,"import_slot"))*got=import_slot;else if(!strcmp(what,"sync"))*got=set.p.osc_sync;else if(!strcmp(what,"trigger"))*got=set.p.trigger_mode;else if(!strcmp(what,"pwm1"))*got=set.p.osc1_pwm_source;else if(!strcmp(what,"pwm2"))*got=set.p.osc2_pwm_source;else if(!strcmp(what,"lfo_clock"))*got=set.p.lfo_clock_div;else if(!strcmp(what,"seq_running"))*got=seqrt.running;else if(!strcmp(what,"seq_step"))*got=seqrt.pos;else if(!strcmp(what,"seq_len"))*got=set.seq.steps;else if(!strcmp(what,"seq_block"))*got=set.seq.block;else if(!strcmp(what,"seq_clock"))*got=set.seq.clock_mode;else if(!strcmp(what,"seq_base_oct"))*got=set.seq.base_octave;else if(!strcmp(what,"seq_edit"))*got=ui.seq_mode>=SQ_PIANO;else if(!strcmp(what,"seq_mode"))*got=ui.seq_mode;else if(!strcmp(what,"seq_undo"))*got=seq_undo.valid;else if(!strcmp(what,"seq_mut_time"))*got=set.seq.mut_time_ops;else if(!strcmp(what,"seq_mut_note"))*got=set.seq.mut_note_ops;else if(!strcmp(what,"seq_mut_art"))*got=set.seq.mut_art_ops;else if(!strcmp(what,"seq_selected_kind"))*got=acid_seq_kind(&set.seq,ui.seq_step);else if(!strcmp(what,"seq_selected_degree"))*got=acid_seq_degree(&set.seq,ui.seq_step);else if(!strcmp(what,"seq_selected_oct"))*got=set.seq.step[ui.seq_step].octave;else if(!strcmp(what,"seq_selected_acc"))*got=acid_seq_accent(&set.seq,ui.seq_step);else if(!strcmp(what,"seq_selected_slide"))*got=acid_seq_slide(&set.seq,ui.seq_step);else if(!strcmp(what,"cutoff"))*got=(int)(set.p.cutoff_hz+0.5f);else if(!strcmp(what,"resonance"))*got=(int)(set.p.resonance*100.0f+0.5f);else if(!strcmp(what,"home"))*got=ui.home;else if(!strcmp(what,"custom"))*got=set.custom;else if(!strcmp(what,"moog"))*got=(set.bank==0&&set.preset==1&&set.p.trigger_mode==BST_TRIG_MULTI&&set.p.osc1_wave==0&&set.p.osc2_wave==1&&set.p.osc2_range==1&&set.p.filter_24db==1&&set.p.resonance>0.31f&&set.p.resonance<0.32f&&set.p.cutoff_hz>10.0f&&set.p.cutoff_hz<12.0f);else if(!strcmp(what,"moog_wheel"))*got=(set.p.wheel_pitch>4.99f&&set.p.wheel_pitch<5.01f);else if(!strcmp(what,"factory_last"))*got=(set.bank==0&&set.preset==100u);else if(!strcmp(what,"lfo_fast"))*got=set.p.lfo_rate_hz>900.0f;else if(!strcmp(what,"env20"))*got=(set.p.amp_attack>19.9f&&set.p.amp_decay>19.9f&&set.p.amp_release>19.9f);else if(!strcmp(what,"o1_lfo_cents")){float x=set.p.osc1_lfo_pitch*100.0f;*got=(int)(x+(x>=0.0f?0.5f:-0.5f));}else if(!strcmp(what,"o2_semi"))*got=(int)(set.p.osc2_semitone+0.5f);else return 0;return 1;}
+int app_expect(const char *what,int *got){if(!strcmp(what,"page"))*got=set.page;else if(!strcmp(what,"preset"))*got=set.preset;else if(!strcmp(what,"bank"))*got=set.bank;else if(!strcmp(what,"user_valid"))*got=user_valid(set.preset);else if(!strcmp(what,"user_seeded"))*got=set.reserved[0]==USER_SEED_VERSION;else if(!strcmp(what,"user_count")){int n=0,i;for(i=0;i<(int)USER_SLOTS;i++)if(user_valid((uint8_t)i))n++;*got=n;}else if(!strcmp(what,"import"))*got=import_on;else if(!strcmp(what,"import_slot"))*got=import_slot;else if(!strcmp(what,"sync"))*got=set.p.osc_sync;else if(!strcmp(what,"trigger"))*got=set.p.trigger_mode;else if(!strcmp(what,"pwm1"))*got=set.p.osc1_pwm_source;else if(!strcmp(what,"pwm2"))*got=set.p.osc2_pwm_source;else if(!strcmp(what,"lfo_clock"))*got=set.p.lfo_clock_div;else if(!strcmp(what,"seq_running"))*got=seqrt.running;else if(!strcmp(what,"seq_step"))*got=seqrt.pos;else if(!strcmp(what,"seq_len"))*got=set.seq.steps;else if(!strcmp(what,"seq_block"))*got=set.seq.block;else if(!strcmp(what,"seq_clock"))*got=set.seq.clock_mode;else if(!strcmp(what,"seq_base_oct"))*got=set.seq.base_octave;else if(!strcmp(what,"seq_edit"))*got=ui.seq_mode>=SQ_PIANO;else if(!strcmp(what,"seq_mode"))*got=ui.seq_mode;else if(!strcmp(what,"seq_undo"))*got=seq_undo.valid;else if(!strcmp(what,"seq_mut_time"))*got=set.seq.mut_time_ops;else if(!strcmp(what,"seq_mut_note"))*got=set.seq.mut_note_ops;else if(!strcmp(what,"seq_mut_art"))*got=set.seq.mut_art_ops;else if(!strcmp(what,"seq_selected_kind"))*got=acid_seq_kind(&set.seq,ui.seq_step);else if(!strcmp(what,"seq_selected_degree"))*got=acid_seq_degree(&set.seq,ui.seq_step);else if(!strcmp(what,"seq_selected_oct"))*got=set.seq.step[ui.seq_step].octave;else if(!strcmp(what,"seq_selected_acc"))*got=acid_seq_accent(&set.seq,ui.seq_step);else if(!strcmp(what,"seq_selected_slide"))*got=acid_seq_slide(&set.seq,ui.seq_step);else if(!strcmp(what,"filter_overlay"))*got=ui.filter_overlay_until!=0;else if(!strcmp(what,"cutoff_scaled"))*got=(int)bw_param_get(19);else if(!strcmp(what,"cutoff"))*got=(int)(set.p.cutoff_hz+0.5f);else if(!strcmp(what,"resonance"))*got=(int)(set.p.resonance*100.0f+0.5f);else if(!strcmp(what,"home"))*got=ui.home;else if(!strcmp(what,"custom"))*got=set.custom;else if(!strcmp(what,"moog"))*got=(set.bank==0&&set.preset==1&&set.p.trigger_mode==BST_TRIG_MULTI&&set.p.osc1_wave==0&&set.p.osc2_wave==1&&set.p.osc2_range==1&&set.p.filter_24db==1&&set.p.resonance>0.31f&&set.p.resonance<0.32f&&bw_param_get(19)==500u);else if(!strcmp(what,"moog_wheel"))*got=(set.p.wheel_pitch>4.99f&&set.p.wheel_pitch<5.01f);else if(!strcmp(what,"factory_last"))*got=(set.bank==0&&set.preset==100u);else if(!strcmp(what,"lfo_fast"))*got=set.p.lfo_rate_hz>900.0f;else if(!strcmp(what,"env20"))*got=(set.p.amp_attack>19.9f&&set.p.amp_decay>19.9f&&set.p.amp_release>19.9f);else if(!strcmp(what,"o1_lfo_cents")){float x=set.p.osc1_lfo_pitch*100.0f;*got=(int)(x+(x>=0.0f?0.5f:-0.5f));}else if(!strcmp(what,"o2_semi"))*got=(int)(set.p.osc2_semitone+0.5f);else return 0;return 1;}
 #endif

@@ -27,13 +27,13 @@ if [[ " $* " != *" --host "* && " $* " != *" --web "* ]]; then
     export JIELI_TOOLCHAIN="$t"
 fi
 
-release_ver="1.0.1"
-python3 base/tools/build.py app --release "$release_ver" --display-version "RC2" "$@"
+release_ver="1.0.2"
+python3 base/tools/build.py app --release "$release_ver" --display-version "RC3" "$@"
 if [[ " $* " == *" --host "* || " $* " == *" --web "* ]]; then exit 0; fi
 mkdir -p release
 fw="app/build/bassstation-${release_ver}.fwsc"
 if [[ ! -f "$fw" ]]; then echo "Expected package not found: $fw" >&2; exit 3; fi
-cp "$fw" release/FM1-BassStation-RC2.fwsc
+cp "$fw" release/FM1-BassStation-RC3.fwsc
 
 # The FWSC loader writes only the application area and is the normal update
 # path when USER-bank contents must be preserved.  A generic full 1 MiB
@@ -43,7 +43,7 @@ cp "$fw" release/FM1-BassStation-RC2.fwsc
 if [[ "${BUILD_CLEAN_MFLASHER:-0}" == "1" ]]; then
     python3 tools/make_mflasher.py \
         reference/FM1-PolyWavetable-TEST81-M-Flasher.bin \
-        release/FM1-BassStation-RC2-CLEAN-INSTALL-M-Flasher.bin \
+        release/FM1-BassStation-RC3-CLEAN-INSTALL-M-Flasher.bin \
         --app app/build/bassstation.bin
 else
     echo "FWSC built. Generic M-Flasher skipped to protect per-device USER data."

@@ -2,6 +2,14 @@
 tap HOME
 turn PRESET 1 20
 shot home.png
+tap LFO
+turn SELECT 8 20
+turn ALGO 4 20
+shot filter-overlay.png
+wait 1300
+shot lfo.png
+tap FX
+shot filter.png
 tap SEL
 turn PRESET 1 20
 shot presets.png
